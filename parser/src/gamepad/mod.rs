@@ -803,3 +803,157 @@ impl GamepadConfig {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Everything else here is index arithmetic over the reserved range, so
+    /// this is the assumption the whole module rests on.
+    #[test]
+    fn pad_codes_tile_the_reserved_range() {
+        let mut seen = Vec::new();
+        let codes = PadButton::ALL
+            .map(|b| (PadCode::button(b), PadControl::Button(b)))
+            .into_iter()
+            .chain(Directional::ALL.into_iter().flat_map(|c| {
+                Dir::ALL.map(move |d| (PadCode::direction(c, d), PadControl::Direction(c, d)))
+            }))
+            .chain(
+                (0..PadCode::SLOTS)
+                    .map(|i| (PadCode::slot(i).expect("below SLOTS"), PadControl::Slot(i))),
+            );
+        for (code, control) in codes {
+            assert_eq!(code.control(), control, "{code} misclassified");
+            assert_eq!(PadCode::from_os_code(code.os_code()), Some(code));
+            seen.push(code);
+        }
+        seen.sort();
+        seen.dedup();
+        assert_eq!(seen.len(), OsCode::GAMEPAD_COUNT as usize, "codes overlap");
+        assert_eq!(PadCode::slot(PadCode::SLOTS), None);
+        for not_a_pad in [OsCode::KEY_A, OsCode::BTN_LEFT, OsCode::KEY_MAX] {
+            assert_eq!(PadCode::from_os_code(not_a_pad), None, "{not_a_pad}");
+        }
+    }
+
+    #[test]
+    fn cardinal_and_projected_directions_are_distinct_and_total() {
+        for dir in Dir::ALL {
+            assert_eq!(dir.opposite().opposite(), dir);
+            assert_ne!(dir.opposite(), dir);
+            assert_eq!(Cardinal::try_from(dir).is_err(), dir.is_diagonal());
+        }
+        for cardinal in Cardinal::ALL {
+            assert_eq!(cardinal.opposite().opposite(), cardinal);
+            assert_eq!(Cardinal::try_from(cardinal.direction()), Ok(cardinal));
+        }
+        assert_eq!(CardinalSet::EMPTY.single(), None);
+    }
+
+    #[test]
+    fn an_opposed_axis_denotes_no_direction() {
+        // Up+Down is not a direction, it is a question for SOCD, and the
+        // eight-way collapse may not guess an answer.
+        for pair in [
+            CardinalSet::of(&[Cardinal::Up, Cardinal::Down]),
+            CardinalSet::of(&[Cardinal::Left, Cardinal::Right]),
+        ] {
+            assert_eq!(pair.single(), None, "{pair:?}");
+            assert_eq!(pair.projected(DirMode::EightWay).count(), 0);
+            assert_eq!(
+                pair.projected(DirMode::FourWay).collect::<Vec<_>>(),
+                pair.iter().map(Cardinal::direction).collect::<Vec<_>>(),
+                "4way passes raw cardinals on"
+            );
+        }
+        let up_down_left = CardinalSet::of(&[Cardinal::Up, Cardinal::Down, Cardinal::Left]);
+        assert_eq!(up_down_left.single(), Some(Dir::Left));
+        assert_eq!(
+            up_down_left
+                .projected(DirMode::EightWay)
+                .collect::<Vec<_>>(),
+            vec![Dir::Left],
+            "an opposed axis must not erase the independent axis"
+        );
+    }
+
+    #[test]
+    fn eight_way_replaces_a_diagonals_components_with_the_diagonal() {
+        let up_right = CardinalSet::of(&[Cardinal::Up, Cardinal::Right]);
+        assert_eq!(
+            up_right.projected(DirMode::EightWay).collect::<Vec<_>>(),
+            vec![Dir::UpRight]
+        );
+        assert_eq!(
+            up_right.projected(DirMode::FourWay).collect::<Vec<_>>(),
+            vec![Dir::Up, Dir::Right]
+        );
+        // A straight push still presses its cardinal in eight-way, so every
+        // direction stays reachable.
+        let up = CardinalSet::of(&[Cardinal::Up]);
+        assert_eq!(
+            up.projected(DirMode::EightWay).collect::<Vec<_>>(),
+            vec![Dir::Up]
+        );
+        // And a set reads as a vector, which is what lets a d-pad drive the
+        // pointer; an opposed pair cancels there too.
+        assert_eq!(up_right.vector(), Vec2 { x: 1.0, y: 1.0 });
+        assert_eq!(
+            CardinalSet::of(&[Cardinal::Up, Cardinal::Down]).vector(),
+            Vec2::ZERO
+        );
+    }
+
+    #[test]
+    fn a_pad_set_diffs_into_edges_that_release_before_they_press() {
+        // A four-way stick moving from Up to Left must never hold both, which
+        // a game reads as a diagonal.
+        let up = PadCode::direction(Directional::LeftStick, Dir::Up);
+        let left = PadCode::direction(Directional::LeftStick, Dir::Left);
+        let (mut before, mut after) = (PadSet::EMPTY, PadSet::EMPTY);
+        assert!(before.is_empty());
+        before.insert(up);
+        after.set(left, true);
+        assert!(before.contains(up) && !before.contains(left));
+        assert_eq!(
+            before.edges(after).collect::<Vec<_>>(),
+            vec![
+                PadEdge {
+                    code: up,
+                    pressed: false
+                },
+                PadEdge {
+                    code: left,
+                    pressed: true
+                },
+            ]
+        );
+        assert_eq!(before.edges(before).count(), 0, "no change, no edges");
+        assert_eq!((before | after).iter().count(), 2);
+    }
+
+    #[test]
+    fn a_default_config_projects_only_the_dpad() {
+        let mut cfg = GamepadConfig::default();
+        assert!(!cfg.drives_motion());
+        assert_eq!(cfg.projection(Directional::LeftStick), &Projection::OFF);
+        assert!(cfg.projection(Directional::Dpad).digital.is_some());
+        assert_eq!(cfg.slot_of(0x2c0), None);
+
+        cfg.projection_mut(Directional::LeftStick).digital = Some(Digital::default());
+        assert!(!cfg.drives_motion(), "a digital projection is not motion");
+        // A trigger driving the wheel counts too, which is the case a check
+        // that only looked at sticks would miss.
+        cfg.trigger_mut(Side::Right).motions.set(
+            MotionKind::Scroll,
+            TriggerMotion {
+                direction: Cardinal::Down,
+                motion: Motion::SCROLL,
+            },
+        );
+        assert!(cfg.drives_motion());
+
+        cfg.slots[3] = Some(0x2c0);
+        assert_eq!(cfg.slot_of(0x2c0), PadCode::slot(3));
+    }
+}
