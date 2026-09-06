@@ -341,3 +341,265 @@ fn describe(pad: &gilrs::Gamepad<'_>) -> PadDeviceInfo {
         product_id: pad.product_id(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use kanata_parser::gamepad::{
+        Digital, Dir, DirMode, Directional, GamepadConfig, Motion, MotionKind, PadCode, PadSet,
+        Projection, Unit,
+    };
+
+    fn code() -> gilrs::ev::Code {
+        // gilrs exposes backend codes only through a live device, so borrow
+        // one from a button that always has a mapping.
+        Button::South.to_nec().expect("South always has a code")
+    }
+
+    fn axis(axis: Axis, value: f32) -> EventType {
+        EventType::AxisChanged(axis, value, code())
+    }
+
+    fn translated(events: &[EventType]) -> Vec<PadInput> {
+        let mut pad = Pad::default();
+        events
+            .iter()
+            .filter_map(|event| translate(*event, &mut pad))
+            .collect()
+    }
+
+    #[test]
+    fn a_multi_axis_report_carries_every_axis_with_it() {
+        // Backends report one axis at a time, but a projection needs the whole
+        // reading: without the latch a diagonal push briefly looks cardinal.
+        assert_eq!(
+            translated(&[
+                axis(Axis::LeftStickX, 0.5),
+                axis(Axis::RightStickY, 1.0),
+                axis(Axis::LeftStickY, -0.25),
+            ]),
+            vec![
+                PadInput::Stick {
+                    side: Side::Left,
+                    value: StickPosition::new(0.5, 0.0)
+                },
+                PadInput::Stick {
+                    side: Side::Right,
+                    value: StickPosition::new(0.0, 1.0)
+                },
+                // The right stick's report must not have disturbed the left.
+                PadInput::Stick {
+                    side: Side::Left,
+                    value: StickPosition::new(0.5, -0.25)
+                },
+            ]
+        );
+        assert_eq!(
+            translated(&[axis(Axis::DPadX, 1.0), axis(Axis::DPadY, -1.0)]),
+            vec![
+                PadInput::Hat(CardinalSet::of(&[Cardinal::Right])),
+                PadInput::Hat(CardinalSet::of(&[Cardinal::Right, Cardinal::Down])),
+            ]
+        );
+        assert_eq!(
+            translated(&[
+                EventType::ButtonPressed(Button::DPadUp, code()),
+                EventType::ButtonPressed(Button::DPadRight, code()),
+            ]),
+            vec![
+                PadInput::Contacts(CardinalSet::of(&[Cardinal::Up])),
+                PadInput::Contacts(CardinalSet::of(&[Cardinal::Up, Cardinal::Right])),
+            ]
+        );
+    }
+
+    #[test]
+    fn only_the_trigger_axes_survive_as_analog_readings() {
+        assert_eq!(
+            translated(&[
+                EventType::ButtonChanged(Button::LeftTrigger2, 0.75, code()),
+                // The digital edge for this already arrived as ButtonPressed;
+                // acting on the analog report too would double-fire.
+                EventType::ButtonChanged(Button::South, 1.0, code()),
+                EventType::ButtonChanged(Button::LeftTrigger, 1.0, code()),
+                // And an axis that names no control is dropped entirely.
+                axis(Axis::LeftZ, 1.0),
+            ]),
+            vec![PadInput::Trigger {
+                side: Side::Left,
+                value: Unit::new(0.75)
+            }]
+        );
+        // A control gilrs cannot name keeps its backend code, so the user can
+        // bind it to a slot.
+        assert!(matches!(
+            translated(&[EventType::ButtonPressed(Button::Unknown, code())]).as_slice(),
+            [PadInput::Native { .. }]
+        ));
+    }
+
+    #[test]
+    fn a_diagonal_push_never_looks_like_a_cardinal_one() {
+        // The seam between `translate` and the engine, each of which is
+        // covered on its own. Both axes cross the threshold in the same frame
+        // but arrive one at a time, and latching is what stops the first
+        // report from leaving Right held on the way to Up-Right.
+        let mut config = GamepadConfig::default();
+        config.projection_mut(Directional::LeftStick).digital = Some(Digital {
+            mode: DirMode::EightWay,
+            ..Digital::default()
+        });
+        let device = PadDeviceId::new(0);
+        let mut engine = PadEngine::new(config, None);
+        engine.connect(device, PadDeviceInfo::default());
+        let mut pad = Pad::default();
+        let mut edges = Vec::new();
+        for event in [axis(Axis::LeftStickX, 0.8), axis(Axis::LeftStickY, 0.8)] {
+            let input = translate(event, &mut pad).expect("a reading");
+            engine.feed(device, input, &mut edges);
+        }
+        let held = edges.iter().fold(PadSet::EMPTY, |mut set, edge| {
+            set.set(edge.code, edge.pressed);
+            set
+        });
+        assert_eq!(
+            held.iter().collect::<Vec<_>>(),
+            vec![PadCode::direction(Directional::LeftStick, Dir::UpRight)]
+        );
+    }
+
+    // The event path the backend thread actually runs, minus the gilrs context
+    // it cannot build without hardware.
+
+    /// Drive a `Dispatcher` over a trace, with `defsrc` claiming `mapped`.
+    ///
+    /// `MAPPED_KEYS` is process-wide, so these serialize on the same lock the
+    /// config tests use rather than racing a parse in another test.
+    fn dispatch_trace(
+        config: GamepadConfig,
+        mapped: &[OsCode],
+        trace: &[(PadDeviceId, EventType)],
+    ) -> Vec<KeyEvent> {
+        let _lk = match crate::tests::CFG_PARSE_LOCK.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        let previous = std::mem::take(&mut *crate::kanata::MAPPED_KEYS.lock());
+        crate::kanata::MAPPED_KEYS
+            .lock()
+            .extend(mapped.iter().copied());
+
+        let mut dispatcher = Dispatcher::new(Arc::new(Mutex::new(PadEngine::new(config, None))));
+        let mut seen = Vec::new();
+        for (device, event) in trace {
+            let info = matches!(event, EventType::Connected).then(PadDeviceInfo::default);
+            seen.extend_from_slice(dispatcher.dispatch(*device, *event, info));
+        }
+
+        *crate::kanata::MAPPED_KEYS.lock() = previous;
+        seen
+    }
+
+    fn mouse_config() -> GamepadConfig {
+        let mut config = GamepadConfig::default();
+        *config.projection_mut(Directional::RightStick) = Projection {
+            digital: None,
+            motions: {
+                let mut motions: kanata_parser::gamepad::Motions<Motion> = Default::default();
+                motions.set(
+                    MotionKind::Mouse,
+                    Motion {
+                        deadzone: Unit::ZERO,
+                        ..Motion::MOUSE
+                    },
+                );
+                motions
+            },
+        };
+        config
+    }
+
+    fn push(x: f32) -> (PadDeviceId, EventType) {
+        (PadDeviceId::new(0), axis(Axis::RightStickX, x))
+    }
+
+    #[test]
+    fn a_stick_driving_the_pointer_wakes_the_loop_once_per_push() {
+        // A stick held at a deflection produces no edges, so a mouse
+        // projection sends nothing down the input channel. Without a nudge the
+        // loop goes idle, blocks on that channel, and the pointer freezes
+        // mid-push until some unrelated input happens to wake it. One nudge is
+        // enough: from there the tick loop keeps itself awake, so a nudge per
+        // sample would be channel noise at the controller's report rate.
+        let mut trace = vec![(PadDeviceId::new(0), EventType::Connected)];
+        trace.extend((0..10).map(|step| push(1.0 - step as f32 / 100.0)));
+        let events = dispatch_trace(mouse_config(), &[], &trace);
+        assert_eq!(
+            events.iter().map(|e| e.value).collect::<Vec<_>>(),
+            vec![KeyValue::WakeUp],
+            "pushing the stick should wake the loop exactly once: {events:?}"
+        );
+
+        // Returning to rest and pushing again arms it for the next push.
+        let mut trace = vec![(PadDeviceId::new(0), EventType::Connected)];
+        trace.extend([push(1.0), push(0.0), push(-1.0)]);
+        assert_eq!(
+            dispatch_trace(mouse_config(), &[], &trace).len(),
+            2,
+            "the second push did not wake the loop"
+        );
+    }
+
+    #[test]
+    fn nothing_wakes_the_loop_when_no_control_drives_motion() {
+        // The nudge exists for continuous output only. A digital config has
+        // edges to send, so it may not cost a spurious wake-up.
+        let mut config = GamepadConfig::default();
+        config.projection_mut(Directional::RightStick).digital = Some(Digital::default());
+        let mut trace = vec![
+            (PadDeviceId::new(0), EventType::Connected),
+            (
+                PadDeviceId::new(0),
+                EventType::ButtonPressed(Button::South, code()),
+            ),
+        ];
+        trace.push(push(1.0));
+        let events = dispatch_trace(
+            config,
+            &[PadCode::button(PadButton::South).os_code()],
+            &trace,
+        );
+        assert!(
+            events.iter().all(|e| e.value != KeyValue::WakeUp),
+            "a digital config woke the loop for nothing: {events:?}"
+        );
+    }
+
+    #[test]
+    fn only_mapped_controls_of_a_connected_pad_reach_the_loop() {
+        // The same `defsrc` gate the keyboard path uses; without it a
+        // controller would press coordinates the layout does not own. A pad
+        // unplugged mid-press has to release, too, or the key is stranded with
+        // nothing left that could ever let go of it.
+        let pad = PadDeviceId::new(3);
+        let south = PadCode::button(PadButton::South).os_code();
+        let events = dispatch_trace(
+            GamepadConfig::default(),
+            &[south],
+            &[
+                (pad, EventType::Connected),
+                (pad, EventType::ButtonPressed(Button::South, code())),
+                (pad, EventType::ButtonPressed(Button::East, code())),
+                (
+                    PadDeviceId::new(7),
+                    EventType::ButtonPressed(Button::South, code()),
+                ),
+                (pad, EventType::Disconnected),
+            ],
+        );
+        assert_eq!(
+            events.iter().map(|e| (e.code, e.value)).collect::<Vec<_>>(),
+            vec![(south, KeyValue::Press), (south, KeyValue::Release)]
+        );
+    }
+}
