@@ -582,3 +582,224 @@ impl fmt::Debug for PadSet {
     }
 }
 
+// ------------------------------------------------------------------- config
+//
+// A description of physical controls and their projections, and nothing else:
+// it never names an output key.
+
+/// How many cardinals a diagonal presses.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DirMode {
+    /// A diagonal presses two cardinal controls, the way holding two keys
+    /// does. Right for WASD-style movement.
+    #[default]
+    FourWay,
+    /// A diagonal presses one dedicated diagonal control instead; a straight
+    /// push still presses its cardinal. Right when a diagonal has to be
+    /// distinguishable from its components.
+    EightWay,
+}
+
+/// How to resolve a control asserting both directions of an axis at once.
+///
+/// Only a control with independent contacts can do that -- a d-pad, or a
+/// hitbox-style stick replacement. A stick reports each axis as one signed
+/// number, so the setting is inert there.
+///
+/// The default is to pass both through, because both contacts really are down;
+/// the other modes exist for people who want a game's semantics. Resolution is
+/// per controller: two pads pressing opposite directions is two players, not a
+/// conflict, and the engine unions them afterwards.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Socd {
+    /// Both directions reach the layout. The default.
+    #[default]
+    Off,
+    /// Neither direction survives. The fighting-game convention.
+    Neutral,
+    /// The most recently pressed direction wins, and takes over immediately.
+    Last,
+    /// The direction already held wins; the newcomer is ignored until the
+    /// incumbent releases.
+    First,
+    /// Up and Right always win.
+    Positive,
+    /// Down and Left always win.
+    Negative,
+}
+
+/// Threshold crossings become `pad-lstick-*`, `pad-rstick-*` or `pad-dpad-*`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Digital {
+    pub mode: DirMode,
+    pub socd: Socd,
+    /// Where each axis presses. Compared against the *raw* reading, so
+    /// `(threshold 0.5)` means half of physical deflection and nothing
+    /// -- deadzone or curve -- can silently move it. Ignored by a d-pad, which
+    /// is digital before it arrives.
+    pub threshold: Unit,
+}
+
+/// At most one projection for each continuous output domain.
+///
+/// A typed two-slot map is both less error-prone than an
+/// `Option<(MotionKind, T)>` and more capable: a control may intentionally
+/// drive the pointer and wheel together, while duplicate declarations of the
+/// same kind remain a parser error.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Motions<T>([Option<T>; MotionKind::ALL.len()]);
+
+impl<T> Default for Motions<T> {
+    fn default() -> Motions<T> {
+        Motions([None, None])
+    }
+}
+
+impl<T: Copy> Motions<T> {
+    pub fn get(&self, kind: MotionKind) -> Option<T> {
+        self.0[kind as usize]
+    }
+
+    pub fn set(&mut self, kind: MotionKind, value: T) {
+        self.0[kind as usize] = Some(value);
+    }
+
+    pub fn contains(self, kind: MotionKind) -> bool {
+        self.get(kind).is_some()
+    }
+
+    pub fn is_empty(self) -> bool {
+        self.0.iter().all(Option::is_none)
+    }
+}
+
+impl Default for Digital {
+    fn default() -> Digital {
+        Digital {
+            mode: DirMode::default(),
+            socd: Socd::default(),
+            threshold: Unit::new(0.50),
+        }
+    }
+}
+
+/// What a stick or d-pad does.
+///
+/// The two halves are independent and a control may have both: a stick can
+/// drive the pointer *and* press a key at full deflection, because the
+/// threshold and the displacement read the same value without disturbing each
+/// other.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Projection {
+    pub digital: Option<Digital>,
+    pub motions: Motions<Motion>,
+}
+
+impl Projection {
+    /// What a stick starts with: nothing. Its values are still tracked, so a
+    /// live reload can begin using it without waiting for the user to move it.
+    pub const OFF: Projection = Projection {
+        digital: None,
+        motions: Motions([None, None]),
+    };
+}
+
+/// What a trigger's analog half does.
+///
+/// Crossing the threshold presses `pad-l2` / `pad-r2`. A trigger is one number
+/// rather than a vector, so a continuous projection has to be told which way
+/// to push -- which is also what makes `(trigger right (scroll down ...))` a
+/// pressure-sensitive scroll wheel.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Trigger {
+    pub threshold: Unit,
+    pub motions: Motions<TriggerMotion>,
+}
+
+/// A scalar trigger projected along one cardinal direction.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TriggerMotion {
+    pub direction: Cardinal,
+    pub motion: Motion,
+}
+
+impl Default for Trigger {
+    fn default() -> Trigger {
+        // A trigger actuates much earlier than a stick.
+        Trigger {
+            threshold: Unit::new(0.30),
+            motions: Motions::default(),
+        }
+    }
+}
+
+/// Everything `defgamepad` declares.
+///
+/// `Copy` on purpose: it is handed to a projector per connected controller and
+/// replaced wholesale on live reload, and neither path should have to think
+/// about sharing.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GamepadConfig {
+    /// Restricts this declaration to one `definputdevices` entry. `None` means
+    /// every connected controller feeds the same controls, which is what a
+    /// single-pad user wants and a two-pad user overrides.
+    pub device: Option<NonZeroU8>,
+    /// Indexed by [`Directional`].
+    pub directionals: [Projection; Directional::ALL.len()],
+    /// Indexed by [`Side`].
+    pub triggers: [Trigger; Side::ALL.len()],
+    /// The backend code bound to each `pad-button-N`.
+    ///
+    /// Controllers expose paddles, extra hats and vendor buttons that no
+    /// portable name can describe. Rather than invent an unstable
+    /// auto-numbering, kanata offers slots and lets the user bind a code to
+    /// each; the codes it cannot name are printed to the log as they arrive.
+    pub slots: [Option<u32>; PadCode::SLOTS as usize],
+}
+
+impl Default for GamepadConfig {
+    fn default() -> GamepadConfig {
+        let mut directionals = [Projection::OFF; Directional::ALL.len()];
+        // A d-pad needs no declaration: it is digital hardware, and there is
+        // nothing to decide before it can press a key.
+        directionals[Directional::Dpad as usize].digital = Some(Digital::default());
+        GamepadConfig {
+            device: None,
+            directionals,
+            triggers: [Trigger::default(); Side::ALL.len()],
+            slots: [None; PadCode::SLOTS as usize],
+        }
+    }
+}
+
+impl GamepadConfig {
+    pub fn projection(&self, control: Directional) -> &Projection {
+        &self.directionals[control as usize]
+    }
+
+    pub fn projection_mut(&mut self, control: Directional) -> &mut Projection {
+        &mut self.directionals[control as usize]
+    }
+
+    pub fn trigger(&self, side: Side) -> &Trigger {
+        &self.triggers[side as usize]
+    }
+
+    pub fn trigger_mut(&mut self, side: Side) -> &mut Trigger {
+        &mut self.triggers[side as usize]
+    }
+
+    /// The slot a backend code is bound to, if any.
+    pub fn slot_of(&self, code: u32) -> Option<PadCode> {
+        let index = self.slots.iter().position(|bound| *bound == Some(code))?;
+        PadCode::slot(index as u8)
+    }
+
+    /// Whether anything drives the pointer or the wheel, and so whether the
+    /// tick loop has to sample the controller at all.
+    pub fn drives_motion(&self) -> bool {
+        self.directionals.iter().any(|p| !p.motions.is_empty())
+            || self.triggers.iter().any(|t| !t.motions.is_empty())
+    }
+}
+
