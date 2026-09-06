@@ -388,3 +388,197 @@ impl PadButton {
     ];
 }
 
+// -------------------------------------------------------------------- codes
+
+/// A control on a game controller, as an index into the `OsCode` range
+/// reserved for them.
+///
+/// The only supported way to obtain a controller `OsCode`: keeping the
+/// synthetic range behind a constructor stops it leaking into code that
+/// reasons about real scancodes. The range is laid out as buttons, then eight
+/// directions per [`Directional`], then the slots, so construction and
+/// [`PadCode::control`] are index arithmetic rather than a lookup table.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct PadCode(u8);
+
+impl PadCode {
+    /// How many `pad-button-N` slots exist.
+    pub const SLOTS: u8 = 16;
+
+    const DIRECTIONS: u8 = PadButton::ALL.len() as u8;
+    const SLOT_BASE: u8 = PadCode::DIRECTIONS + (Directional::ALL.len() * Dir::ALL.len()) as u8;
+
+    pub const fn button(button: PadButton) -> PadCode {
+        PadCode(button as u8)
+    }
+
+    pub const fn direction(control: Directional, dir: Dir) -> PadCode {
+        PadCode(PadCode::DIRECTIONS + control as u8 * Dir::ALL.len() as u8 + dir as u8)
+    }
+
+    pub const fn slot(index: u8) -> Option<PadCode> {
+        match index < PadCode::SLOTS {
+            true => Some(PadCode(PadCode::SLOT_BASE + index)),
+            false => None,
+        }
+    }
+
+    /// Recover a `PadCode`, rejecting anything outside the reserved range.
+    pub const fn from_os_code(code: OsCode) -> Option<PadCode> {
+        match code.gamepad_index() {
+            Some(index) => Some(PadCode(index)),
+            None => None,
+        }
+    }
+
+    pub const fn os_code(self) -> OsCode {
+        match OsCode::from_gamepad_index(self.0) {
+            Some(code) => code,
+            None => unreachable!(),
+        }
+    }
+
+    /// What this code names: the inverse of the constructors, so callers can
+    /// reason about a code without re-deriving the layout of the range.
+    pub const fn control(self) -> PadControl {
+        let index = self.0;
+        if index < PadCode::DIRECTIONS {
+            return PadControl::Button(PadButton::ALL[index as usize]);
+        }
+        if index < PadCode::SLOT_BASE {
+            let rest = (index - PadCode::DIRECTIONS) as usize;
+            return PadControl::Direction(
+                Directional::ALL[rest / Dir::ALL.len()],
+                Dir::ALL[rest % Dir::ALL.len()],
+            );
+        }
+        PadControl::Slot(index - PadCode::SLOT_BASE)
+    }
+}
+
+/// The vocabulary above and the reserved `OsCode` range are two spellings of
+/// one thing, and every constructor here assumes they agree.
+const _: () = {
+    assert!(
+        PadCode::SLOT_BASE + PadCode::SLOTS == OsCode::GAMEPAD_COUNT,
+        "the reserved OsCode range and the control vocabulary disagree"
+    );
+    assert!(
+        OsCode::GAMEPAD_COUNT as u32 <= u64::BITS,
+        "a PadSet has one bit per control; widen it or shrink the vocabulary"
+    );
+};
+
+/// The three kinds of control the reserved range holds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PadControl {
+    Button(PadButton),
+    Direction(Directional, Dir),
+    /// A user-assignable `pad-button-N`.
+    Slot(u8),
+}
+
+impl From<PadCode> for OsCode {
+    fn from(code: PadCode) -> OsCode {
+        code.os_code()
+    }
+}
+
+impl fmt::Debug for PadCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.os_code())
+    }
+}
+
+impl fmt::Display for PadCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.os_code())
+    }
+}
+
+/// A digital control changing state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PadEdge {
+    pub code: PadCode,
+    pub pressed: bool,
+}
+
+/// The set of controls a controller is holding.
+///
+/// One `u64`, because the reserved range is deliberately smaller than that.
+/// Holding state, merging several controllers and diffing for edges are then
+/// each a single instruction, and nothing on the event path allocates.
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub struct PadSet(u64);
+
+impl PadSet {
+    pub const EMPTY: PadSet = PadSet(0);
+
+    pub const fn contains(self, code: PadCode) -> bool {
+        self.0 & (1 << code.0) != 0
+    }
+
+    pub const fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    pub fn insert(&mut self, code: PadCode) {
+        self.0 |= 1 << code.0;
+    }
+
+    pub fn set(&mut self, code: PadCode, present: bool) {
+        let bit = 1u64 << code.0;
+        self.0 = if present { self.0 | bit } else { self.0 & !bit };
+    }
+
+    pub fn iter(self) -> impl Iterator<Item = PadCode> {
+        codes(self.0)
+    }
+
+    /// The transitions from `self` to `next`.
+    ///
+    /// Releases come before presses: a four-way stick moving from Up to Left
+    /// must not momentarily hold both, which a game reads as a diagonal. Every
+    /// control group diffs through here, so that rule is written once.
+    pub fn edges(self, next: PadSet) -> impl Iterator<Item = PadEdge> {
+        let released = codes(self.0 & !next.0).map(|code| PadEdge {
+            code,
+            pressed: false,
+        });
+        let pressed = codes(next.0 & !self.0).map(|code| PadEdge {
+            code,
+            pressed: true,
+        });
+        released.chain(pressed)
+    }
+}
+
+fn codes(mut bits: u64) -> impl Iterator<Item = PadCode> {
+    core::iter::from_fn(move || {
+        (bits != 0).then(|| {
+            let index = bits.trailing_zeros() as u8;
+            bits &= bits - 1;
+            PadCode(index)
+        })
+    })
+}
+
+impl BitOr for PadSet {
+    type Output = PadSet;
+    fn bitor(self, other: PadSet) -> PadSet {
+        PadSet(self.0 | other.0)
+    }
+}
+
+impl BitOrAssign for PadSet {
+    fn bitor_assign(&mut self, other: PadSet) {
+        self.0 |= other.0;
+    }
+}
+
+impl fmt::Debug for PadSet {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_set().entries(self.iter()).finish()
+    }
+}
+
