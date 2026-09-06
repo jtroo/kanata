@@ -176,3 +176,110 @@ fn quantize(hat: &mut CardinalSet, value: f32, positive: Cardinal, negative: Car
     hat.set(positive, value > 0.5);
     hat.set(negative, value < -0.5);
 }
+
+/// Everything the backend thread owns except the gilrs context itself.
+///
+/// Split out because building a `Gilrs` needs hardware and none of this does:
+/// with the context on one side of the line, the whole event path -- latching,
+/// projection, the `defsrc` gate -- can be driven from a recorded trace.
+struct Dispatcher {
+    engine: Arc<Mutex<PadEngine>>,
+    pads: HashMap<PadDeviceId, Pad>,
+    edges: Vec<PadEdge>,
+    events: Vec<KeyEvent>,
+}
+
+impl Dispatcher {
+    fn new(engine: Arc<Mutex<PadEngine>>) -> Dispatcher {
+        Dispatcher {
+            engine,
+            pads: HashMap::default(),
+            edges: Vec::new(),
+            events: Vec::new(),
+        }
+    }
+
+    /// Handle one backend event, returning the input events it implies.
+    ///
+    /// `info` describes the device and is needed only for a connection, which
+    /// is the one thing that has to be read out of the gilrs context.
+    fn dispatch(
+        &mut self,
+        device: PadDeviceId,
+        event: EventType,
+        info: Option<PadDeviceInfo>,
+    ) -> &[KeyEvent] {
+        self.edges.clear();
+        self.events.clear();
+        // Only an analog reading or a departing controller can change what the
+        // continuous projections are asking for.
+        let mut resampled = matches!(event, EventType::Disconnected);
+        match event {
+            EventType::Connected => {
+                self.pads.insert(device, Pad::default());
+                if let Some(info) = info {
+                    self.offer(device, info);
+                }
+            }
+            EventType::Disconnected => {
+                self.pads.remove(&device);
+                let mut engine = self.engine.lock();
+                if let Some(name) = engine.device_name(device) {
+                    log::info!("gamepad: {name} disconnected");
+                }
+                engine.disconnect(device, &mut self.edges);
+            }
+            other => {
+                let pad = self.pads.entry(device).or_default();
+                if let Some(input) = translate(other, pad) {
+                    // Anything that is not a digital control can change what
+                    // the continuous projections are asking for -- including a
+                    // d-pad contact or hat, because a d-pad reads as a stick
+                    // at full deflection.
+                    resampled |=
+                        !matches!(input, PadInput::Button { .. } | PadInput::Native { .. });
+                    // The engine lock is dropped at the end of this statement,
+                    // before the gate below takes MAPPED_KEYS and before the
+                    // caller sends. The processing thread takes the engine lock
+                    // during a live reload, so holding it across either would
+                    // let the two wait on each other.
+                    self.engine.lock().feed(device, input, &mut self.edges);
+                }
+            }
+        }
+        gate_on_defsrc(&self.edges, &mut self.events);
+        if resampled {
+            self.wake_for_motion();
+        }
+        &self.events
+    }
+
+    /// Nudge the processing loop when a control starts asking for movement.
+    ///
+    /// A stick held at a deflection produces no edges -- it is already where
+    /// the user put it -- so a mouse or scroll projection sends *nothing* down
+    /// the input channel. Without this the loop would go idle, block on the
+    /// channel, and leave the pointer frozen mid-push until some unrelated
+    /// input happened to wake it.
+    ///
+    /// One nudge per transition into movement is enough: from there the tick
+    /// loop keeps itself awake for as long as the demand lasts, and the next
+    /// reading that returns to rest arms this again.
+    fn wake_for_motion(&mut self) {
+        if self.engine.lock().take_motion_start() {
+            self.events
+                .push(KeyEvent::new(OsCode::KEY_RESERVED, KeyValue::WakeUp));
+        }
+    }
+
+    fn offer(&self, id: PadDeviceId, info: PadDeviceInfo) {
+        let name = info.name.clone();
+        match self.engine.lock().connect(id, info) {
+            Connection::Accepted => log::info!("gamepad: using \"{name}\""),
+            Connection::NotSelected => log::info!(
+                "gamepad: ignoring \"{name}\", it does not match the definputdevices \
+                 entry named by defgamepad"
+            ),
+        }
+    }
+}
