@@ -283,3 +283,61 @@ impl Dispatcher {
         }
     }
 }
+
+/// Start the controller thread.
+///
+/// Returns immediately. Failure to reach a controller backend is logged and
+/// leaves kanata running as a keyboard remapper, because a missing controller
+/// library is not a reason to refuse to start.
+pub fn spawn(engine: Arc<Mutex<PadEngine>>, tx: SyncSender<KeyEvent>) {
+    std::thread::spawn(move || {
+        if let Err(e) = run(engine, tx) {
+            log::error!("gamepad: input thread stopped: {e}");
+        }
+    });
+}
+
+fn run(engine: Arc<Mutex<PadEngine>>, tx: SyncSender<KeyEvent>) -> Result<(), String> {
+    // Default filters would apply gilrs's own deadzone and jitter handling on
+    // top of ours. The projector is built to be exact, so it wants raw values.
+    let mut gilrs = GilrsBuilder::new()
+        .with_default_filters(false)
+        .set_update_state(false)
+        .build()
+        .map_err(|e| format!("could not start a controller backend: {e}"))?;
+
+    let mut dispatcher = Dispatcher::new(engine);
+    for (id, pad) in gilrs.gamepads() {
+        dispatcher.offer(device_id(id), describe(&pad));
+    }
+    log::info!(
+        "gamepad: backend ready, {} controller(s) connected",
+        dispatcher.engine.lock().connected_count()
+    );
+
+    loop {
+        let Some(Event { id, event, .. }) = gilrs.next_event_blocking(Some(POLL_TIMEOUT)) else {
+            continue;
+        };
+        // Reading the device out of the context is the one thing `dispatch`
+        // cannot do for itself.
+        let info = matches!(event, EventType::Connected).then(|| describe(&gilrs.gamepad(id)));
+        for event in dispatcher.dispatch(device_id(id), event, info) {
+            if tx.send(*event).is_err() {
+                return Ok(());
+            }
+        }
+    }
+}
+
+fn device_id(id: gilrs::GamepadId) -> PadDeviceId {
+    PadDeviceId::new(usize::from(id) as u32)
+}
+
+fn describe(pad: &gilrs::Gamepad<'_>) -> PadDeviceInfo {
+    PadDeviceInfo {
+        name: pad.name().to_string(),
+        vendor_id: pad.vendor_id(),
+        product_id: pad.product_id(),
+    }
+}
