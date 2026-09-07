@@ -189,7 +189,18 @@ pub struct Projector {
     /// motion half points along them, so `(socd positive)` cannot make them
     /// disagree about which way the pad is pointing.
     dpad: CardinalSet,
+    /// Analog controls that have crossed their threshold and stayed there.
+    stable_analog: PadSet,
+    /// A pending change for each analog control. A change only becomes stable
+    /// after its configured grace period has elapsed uninterrupted.
+    pending: [Option<Pending>; PadCode::COUNT],
     held: PadSet,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Pending {
+    pressed: bool,
+    remaining: u16,
 }
 
 impl Projector {
@@ -199,6 +210,8 @@ impl Projector {
             state: PadState::default(),
             socd: SocdMemory::default(),
             dpad: CardinalSet::EMPTY,
+            stable_analog: PadSet::EMPTY,
+            pending: [None; PadCode::COUNT],
             held: PadSet::EMPTY,
         }
     }
@@ -212,6 +225,31 @@ impl Projector {
     pub fn feed(&mut self, input: PadInput) -> PadSet {
         self.state.apply(input, &self.config);
         self.recompute()
+    }
+
+    /// Advance pending threshold crossings by `milliseconds`.
+    ///
+    /// The processing loop calls this once per millisecond, like Kanata's
+    /// other waiting states. A late tick is still correct because elapsed time
+    /// is subtracted rather than counted as one controller event.
+    pub fn tick(&mut self, milliseconds: u16) -> PadSet {
+        for (index, pending) in self.pending.iter_mut().enumerate() {
+            let Some(change) = pending.as_mut() else {
+                continue;
+            };
+            change.remaining = change.remaining.saturating_sub(milliseconds);
+            if change.remaining == 0 {
+                self.stable_analog
+                    .set(PadCode::from_index(index), change.pressed);
+                *pending = None;
+            }
+        }
+        self.compose_held()
+    }
+
+    /// Whether a threshold crossing still needs the tick loop to run.
+    pub fn has_pending(&self) -> bool {
+        self.pending.iter().any(Option::is_some)
     }
 
     /// Let go of everything and forget all history.
@@ -267,14 +305,9 @@ impl Projector {
 
     /// Rebuild the held set from the raw state.
     fn recompute(&mut self) -> PadSet {
-        let mut set = self.state.slots;
+        let mut direct = self.state.slots;
         for button in PadButton::ALL {
-            set.set(PadCode::button(button), self.state.holds(button));
-        }
-        for side in Side::ALL {
-            if self.state.triggers[side as usize] > self.config.trigger(side).threshold {
-                set.insert(PadCode::button(side.trigger()));
-            }
+            direct.set(PadCode::button(button), self.state.holds(button));
         }
         // Arbitrated before the loop, and unconditionally, because `demand`
         // reads the result too: a d-pad with a motion projection and no
@@ -283,6 +316,13 @@ impl Projector {
         let socd = dpad.map_or(Socd::default(), |digital| digital.socd);
         self.dpad = self.socd.resolve(socd, self.state.dpad());
 
+        let mut desired_analog = PadSet::EMPTY;
+        for side in Side::ALL {
+            let trigger = self.config.trigger(side);
+            let code = PadCode::button(side.trigger());
+            desired_analog.set(code, self.state.triggers[side as usize] > trigger.threshold);
+            self.reconcile(code, desired_analog.contains(code), trigger.debounce);
+        }
         for control in Directional::ALL {
             let Some(digital) = self.config.projection(control).digital else {
                 continue;
@@ -292,11 +332,52 @@ impl Projector {
                 None => self.dpad,
             };
             for dir in dirs.projected(digital.mode) {
-                set.insert(PadCode::direction(control, dir));
+                let code = PadCode::direction(control, dir);
+                match control.side() {
+                    Some(_) => desired_analog.insert(code),
+                    None => direct.insert(code),
+                }
+            }
+            if control.side().is_some() {
+                for dir in super::Dir::ALL {
+                    let code = PadCode::direction(control, dir);
+                    self.reconcile(code, desired_analog.contains(code), digital.debounce);
+                }
             }
         }
-        self.held = set;
-        set
+        self.compose_held_from(direct)
+    }
+
+    fn reconcile(&mut self, code: PadCode, pressed: bool, debounce: u16) {
+        if self.stable_analog.contains(code) == pressed {
+            self.pending[code.0 as usize] = None;
+        } else if debounce == 0 {
+            self.stable_analog.set(code, pressed);
+            self.pending[code.0 as usize] = None;
+        } else if self.pending[code.0 as usize].is_none_or(|pending| pending.pressed != pressed) {
+            self.pending[code.0 as usize] = Some(Pending {
+                pressed,
+                remaining: debounce,
+            });
+        }
+    }
+
+    fn compose_held_from(&mut self, direct: PadSet) -> PadSet {
+        self.held = direct | self.stable_analog;
+        self.held
+    }
+
+    fn compose_held(&mut self) -> PadSet {
+        let mut direct = self.state.slots;
+        for button in PadButton::ALL {
+            direct.set(PadCode::button(button), self.state.holds(button));
+        }
+        if let Some(digital) = self.config.projection(Directional::Dpad).digital {
+            for dir in self.dpad.projected(digital.mode) {
+                direct.insert(PadCode::direction(Directional::Dpad, dir));
+            }
+        }
+        self.compose_held_from(direct)
     }
 
     /// The cardinals a stick is asserting.
@@ -506,6 +587,35 @@ mod tests {
             run(config, &trace).1.is_empty(),
             "a threshold rested at its boundary must stay quiet"
         );
+    }
+
+    #[test]
+    fn debounce_requires_an_uninterrupted_threshold_crossing() {
+        let config = digital(
+            Directional::LeftStick,
+            Digital {
+                debounce: 3,
+                ..Digital::default()
+            },
+        );
+        let mut projector = Projector::new(config);
+        let up = lstick(Dir::Up);
+
+        assert!(projector.feed(stick(0.0, 1.0)).is_empty());
+        assert!(projector.has_pending());
+        assert!(projector.tick(2).is_empty(), "two milliseconds is too soon");
+        assert!(projector.tick(1).contains(up));
+
+        // A brief dip below the threshold starts a release, but returning to
+        // the stable side cancels it before it can create an edge.
+        projector.feed(stick(0.0, 0.0));
+        assert!(projector.has_pending());
+        assert!(projector.feed(stick(0.0, 1.0)).contains(up));
+        assert!(!projector.has_pending());
+
+        projector.feed(stick(0.0, 0.0));
+        assert!(projector.tick(2).contains(up));
+        assert!(projector.tick(1).is_empty());
     }
 
     #[test]
