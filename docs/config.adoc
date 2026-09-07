@@ -4290,7 +4290,7 @@ control does stays in your layers where it can differ per layer.
 
 ....
 (defgamepad
-  (stick left  (digital (mode 4way)))
+  (stick left  (digital (mode 4way) (debounce 8)))
   (stick right (mouse (deadzone 0.12) (speed 1200)))
   (dpad        (digital (mode 8way) (socd neutral)))
   (trigger right (threshold 0.30) (scroll down (speed 30))))
@@ -4371,11 +4371,17 @@ reads the same value without disturbing the others.
 | Fraction of *physical* deflection at which a direction presses. Nothing else
   — no deadzone, no curve — can move this point. Not accepted on a d-pad,
   whose contacts are digital before they reach kanata.
+
+| `(debounce 8)`
+| Require an analog reading to remain on its new side of the threshold for this
+  many milliseconds before pressing or releasing. Default `0` acts
+  immediately. Use this to ignore a noisy threshold crossing; it adds the same
+  delay to both edges. Not accepted on a d-pad.
 |===
 
 A digital projection has no `deadzone`, and does not need one — the
-threshold already is one. Giving it a second knob that shifted the first
-without saying so is the mistake this avoids.
+threshold already is one. `debounce` only decides when a crossing becomes an
+edge; it never shifts that threshold.
 
 `mouse` and `scroll` take:
 
@@ -4413,7 +4419,9 @@ since its contacts are always at full deflection.
 ==== (trigger left|right ...)
 
 `(threshold 0.30)` sets the point at which the trigger presses `pad-l2` /
-`pad-r2`, exactly as it does for a stick.
+`pad-r2`, exactly as it does for a stick. `(debounce 8)` has the same meaning
+there: the trigger must remain across the threshold for eight milliseconds
+before its edge is emitted.
 
 A trigger is a single number rather than a vector, so a continuous projection
 has to be told which way to push:
