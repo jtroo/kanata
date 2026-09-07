@@ -202,6 +202,8 @@ pub struct Kanata {
     /// freeze mid-push until the controller happened to send another event.
     /// The keyboard-driven mouse states are in `is_idle` for the same reason.
     gamepad_moving: bool,
+    /// Whether a debounced controller threshold crossing is waiting to settle.
+    gamepad_pending: bool,
     /// The user configuration for backtracking to find valid sequences. See
     /// <../../docs/sequence-adding-chords-ideas.md> for more info.
     pub sequence_backtrack_modcancel: bool,
@@ -491,6 +493,7 @@ impl Kanata {
             gamepad: None,
             gamepad_accumulator: Default::default(),
             gamepad_moving: false,
+            gamepad_pending: false,
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
@@ -651,6 +654,7 @@ impl Kanata {
             gamepad: None,
             gamepad_accumulator: Default::default(),
             gamepad_moving: false,
+            gamepad_pending: false,
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
@@ -838,6 +842,7 @@ impl Kanata {
             // meaning under the new one.
             self.gamepad_accumulator.reset();
             self.gamepad_moving = false;
+            self.gamepad_pending = false;
             let mut edges = Vec::new();
             match (&mut self.gamepad, self.gamepad_config) {
                 // A declaration that was removed is a reconfiguration to
@@ -1102,6 +1107,7 @@ impl Kanata {
         self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
+        self.handle_gamepad_edges()?;
         self.handle_gamepad_motion()?;
         self.tick_sequence_state()?;
         self.tick_idle_timeout();
@@ -1157,6 +1163,22 @@ impl Kanata {
             self.kbd_out.scroll(direction, distance)?;
         }
         Ok(())
+    }
+
+    /// Advance controller thresholds that are waiting to settle.
+    ///
+    /// This follows Kanata's other millisecond waiting states: the backend
+    /// records a pending crossing, and the processing loop owns the clock and
+    /// applies the eventual edges through the normal layout path.
+    fn handle_gamepad_edges(&mut self) -> Result<()> {
+        let Some(gamepad) = self.gamepad.as_ref() else {
+            self.gamepad_pending = false;
+            return Ok(());
+        };
+        let mut edges = Vec::new();
+        gamepad.tick(1, &mut edges);
+        self.gamepad_pending = gamepad.has_pending();
+        self.apply_gamepad_edges(&edges)
     }
 
     /// Feed edges a controller produced into the processing loop.
@@ -2699,7 +2721,7 @@ impl Kanata {
     pub fn is_idle(&self) -> bool {
         let pressed_keys_means_not_idle =
             !self.waiting_for_idle.is_empty() || self.live_reload_requested;
-        if self.gamepad_moving {
+        if self.gamepad_moving || self.gamepad_pending {
             return false;
         }
         let layout = self.layout.b();

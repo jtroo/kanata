@@ -435,6 +435,36 @@ mod from_the_tick {
         assert!(out.contains("↑X"), "the release was dropped: {out}");
     }
 
+    #[test]
+    fn debounce_waits_for_the_tick_and_filters_a_brief_crossing() {
+        let _lk = lock_cfg();
+        let mut k = with_pad(
+            "(defcfg process-unmapped-keys no)
+             (defgamepad (stick left (digital (threshold 0.5) (debounce 3))))
+             (defsrc pad-lstick-up)
+             (deflayer base x)",
+        );
+
+        feed(&mut k, stick(Side::Left, 0.0, 1.0));
+        k.tick_ms(2, &None).expect("ticks fine");
+        assert!(k.kbd_out.outputs.events.is_empty(), "must still be pending");
+
+        // Returning before the deadline cancels the candidate press.
+        feed(&mut k, stick(Side::Left, 0.0, 0.0));
+        k.tick_ms(4, &None).expect("ticks fine");
+        assert!(
+            k.kbd_out.outputs.events.is_empty(),
+            "brief crossing leaked through"
+        );
+
+        feed(&mut k, stick(Side::Left, 0.0, 1.0));
+        k.tick_ms(4, &None).expect("ticks fine");
+        assert!(
+            k.kbd_out.outputs.events.join(" ").contains("↓X"),
+            "settled crossing never pressed"
+        );
+    }
+
     /// Reload `k` from a config written to a temporary file.
     fn reload(k: &mut Kanata, name: &str, cfg: &str) {
         let path = std::env::temp_dir().join(name);
