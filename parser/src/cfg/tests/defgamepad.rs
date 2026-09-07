@@ -84,6 +84,7 @@ fn buttons_and_the_dpad_need_no_declaration_at_all() {
     // A trigger with nothing said about it must still actuate, at the early
     // point people expect from a trigger.
     assert_eq!(empty.trigger(Side::Right).threshold, Unit::new(0.30));
+    assert_eq!(empty.trigger(Side::Right).debounce, 0);
 }
 
 #[test]
@@ -91,15 +92,16 @@ fn a_full_declaration_round_trips() {
     let cfg = ok(
         "",
         "(defgamepad
-           (stick left  (digital (mode 8way) (threshold 0.60)))
+           (stick left  (digital (mode 8way) (threshold 0.60) (debounce 8)))
            (stick right (mouse (deadzone 0.20) (speed 40) (curve quadratic) (invert-y no)))
            (dpad (digital (socd neutral)))
-           (trigger left  (threshold 0.10))
+           (trigger left  (threshold 0.10) (debounce 12))
            (button-slot 0 0x2c0))",
     );
     let left = digital(&cfg, Directional::LeftStick);
     assert_eq!(left.mode, DirMode::EightWay);
     assert_eq!(left.threshold, Unit::new(0.60));
+    assert_eq!(left.debounce, 8);
 
     let (kind, right) = motion(&cfg, Directional::RightStick);
     assert_eq!(
@@ -114,9 +116,11 @@ fn a_full_declaration_round_trips() {
 
     assert_eq!(digital(&cfg, Directional::Dpad).socd, Socd::Neutral);
     assert_eq!(cfg.trigger(Side::Left).threshold, Unit::new(0.10));
+    assert_eq!(cfg.trigger(Side::Left).debounce, 12);
     assert_eq!(cfg.slots[0], Some(0x2c0));
     // What was not mentioned keeps its defaults.
     assert_eq!(cfg.trigger(Side::Right).threshold, Unit::new(0.30));
+    assert_eq!(cfg.trigger(Side::Right).debounce, 0);
 }
 
 #[test]
@@ -248,6 +252,25 @@ fn thresholds_have_one_value_and_reject_the_old_two_value_spelling() {
     // reach kanata, so a press point would be a knob that did nothing.
     let dpad = err("", "(defgamepad (dpad (digital (threshold 0.5))))");
     assert!(dpad.contains("no threshold"), "{dpad}");
+}
+
+#[test]
+fn debounce_is_one_optional_millisecond_duration_for_analog_controls() {
+    let cfg = ok(
+        "",
+        "(defgamepad (stick left (digital (debounce 8))) (trigger right (debounce 12)))",
+    );
+    assert_eq!(digital(&cfg, Directional::LeftStick).debounce, 8);
+    assert_eq!(cfg.trigger(Side::Right).debounce, 12);
+
+    for declaration in [
+        "(defgamepad (dpad (digital (debounce 8))))",
+        "(defgamepad (stick left (digital (debounce -1))))",
+        "(defgamepad (trigger left (debounce 65536)))",
+    ] {
+        let message = err("", declaration);
+        assert!(message.contains("debounce"), "{declaration} gave {message}");
+    }
 }
 
 #[test]
