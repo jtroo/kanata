@@ -69,6 +69,8 @@ pub struct PadEngine {
     held: PadSet,
     /// Whether the last sample found the controllers asking for movement.
     moving: bool,
+    /// Whether a debounced threshold crossing still needs clock time.
+    pending: bool,
 }
 
 impl PadEngine {
@@ -79,6 +81,7 @@ impl PadEngine {
             pads: HashMap::default(),
             held: PadSet::EMPTY,
             moving: false,
+            pending: false,
         }
     }
 
@@ -97,6 +100,17 @@ impl PadEngine {
         let moving = !self.demand().is_idle();
         let started = moving && !self.moving;
         self.moving = moving;
+        started
+    }
+
+    /// Whether a new debounced crossing needs to wake the processing loop.
+    pub fn take_pending_start(&mut self) -> bool {
+        let pending = self
+            .pads
+            .values()
+            .any(|(projector, _)| projector.has_pending());
+        let started = pending && !self.pending;
+        self.pending = pending;
         started
     }
 
@@ -130,6 +144,10 @@ impl PadEngine {
     /// nothing left that could ever release it.
     pub fn disconnect(&mut self, id: PadDeviceId, edges: &mut Vec<PadEdge>) {
         if self.pads.remove(&id).is_some() {
+            self.pending = self
+                .pads
+                .values()
+                .any(|(projector, _)| projector.has_pending());
             self.merge(edges);
         }
     }
@@ -143,10 +161,29 @@ impl PadEngine {
         }
     }
 
+    /// Advance every pending threshold crossing and publish its edges.
+    pub fn tick(&mut self, milliseconds: u16, edges: &mut Vec<PadEdge>) {
+        for (projector, _) in self.pads.values_mut() {
+            projector.tick(milliseconds);
+        }
+        self.pending = self
+            .pads
+            .values()
+            .any(|(projector, _)| projector.has_pending());
+        self.merge(edges);
+    }
+
+    pub fn has_pending(&self) -> bool {
+        self.pads
+            .values()
+            .any(|(projector, _)| projector.has_pending())
+    }
+
     /// Swap in a new declaration across every connected controller.
     pub fn reconfigure(&mut self, config: GamepadConfig, edges: &mut Vec<PadEdge>) {
         self.config = config;
         self.moving = false;
+        self.pending = false;
         for (projector, _) in self.pads.values_mut() {
             projector.reconfigure(config);
         }
@@ -157,6 +194,7 @@ impl PadEngine {
     /// controllers themselves connected.
     pub fn release_all(&mut self, edges: &mut Vec<PadEdge>) {
         self.moving = false;
+        self.pending = false;
         for (projector, _) in self.pads.values_mut() {
             projector.reset();
         }
@@ -272,6 +310,16 @@ impl GamepadHandle {
     /// What the continuous projections want this tick.
     pub fn demand(&self) -> Demand {
         self.engine.lock().demand()
+    }
+
+    /// Advance pending threshold crossings and collect their key edges.
+    pub fn tick(&self, milliseconds: u16, edges: &mut Vec<PadEdge>) {
+        self.engine.lock().tick(milliseconds, edges);
+    }
+
+    /// Whether a debounced crossing still needs clock time.
+    pub fn has_pending(&self) -> bool {
+        self.engine.lock().has_pending()
     }
 
     /// Offer a controller to the engine, as the backend does on connection.
