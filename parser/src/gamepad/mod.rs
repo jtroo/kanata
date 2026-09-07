@@ -402,6 +402,8 @@ impl PadButton {
 pub struct PadCode(u8);
 
 impl PadCode {
+    /// The number of controls in the reserved controller range.
+    pub const COUNT: usize = OsCode::GAMEPAD_COUNT as usize;
     /// How many `pad-button-N` slots exist.
     pub const SLOTS: u8 = 16;
 
@@ -429,6 +431,10 @@ impl PadCode {
             Some(index) => Some(PadCode(index)),
             None => None,
         }
+    }
+
+    pub(crate) const fn from_index(index: usize) -> PadCode {
+        PadCode(index as u8)
     }
 
     pub const fn os_code(self) -> OsCode {
@@ -638,6 +644,9 @@ pub struct Digital {
     /// -- deadzone or curve -- can silently move it. Ignored by a d-pad, which
     /// is digital before it arrives.
     pub threshold: Unit,
+    /// How long a raw crossing must remain on its new side before it becomes
+    /// a key edge. Zero preserves immediate threshold behavior.
+    pub debounce: u16,
 }
 
 /// At most one projection for each continuous output domain.
@@ -679,6 +688,7 @@ impl Default for Digital {
             mode: DirMode::default(),
             socd: Socd::default(),
             threshold: Unit::new(0.50),
+            debounce: 0,
         }
     }
 }
@@ -713,6 +723,8 @@ impl Projection {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Trigger {
     pub threshold: Unit,
+    /// See [`Digital::debounce`].
+    pub debounce: u16,
     pub motions: Motions<TriggerMotion>,
 }
 
@@ -728,6 +740,7 @@ impl Default for Trigger {
         // A trigger actuates much earlier than a stick.
         Trigger {
             threshold: Unit::new(0.30),
+            debounce: 0,
             motions: Motions::default(),
         }
     }
