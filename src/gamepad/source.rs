@@ -251,6 +251,7 @@ impl Dispatcher {
         if resampled {
             self.wake_for_motion();
         }
+        self.wake_for_pending();
         &self.events
     }
 
@@ -267,6 +268,16 @@ impl Dispatcher {
     /// reading that returns to rest arms this again.
     fn wake_for_motion(&mut self) {
         if self.engine.lock().take_motion_start() {
+            self.events
+                .push(KeyEvent::new(OsCode::KEY_RESERVED, KeyValue::WakeUp));
+        }
+    }
+
+    /// A debounced crossing has no edge yet, but the timer that makes it an
+    /// edge belongs to the processing loop. Wake it exactly once per pending
+    /// period; `is_idle` keeps the loop running until the period completes.
+    fn wake_for_pending(&mut self) {
+        if self.engine.lock().take_pending_start() {
             self.events
                 .push(KeyEvent::new(OsCode::KEY_RESERVED, KeyValue::WakeUp));
         }
