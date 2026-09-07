@@ -291,10 +291,12 @@ fn digital(control: Directional, args: &[SExpr], vars: &HashMap<String, SExpr>) 
     for arg in args {
         let (keyword, values) = keyed(arg, vars, "a digital option such as (mode 8way)")?;
         match keyword {
-            "mode" | "socd" | "threshold" => once(&mut seen, arg, format!("({keyword} ...)"))?,
+            "mode" | "socd" | "threshold" | "debounce" => {
+                once(&mut seen, arg, format!("({keyword} ...)"))?
+            }
             _ => bail_expr!(
                 arg,
-                "unknown digital option: {keyword}\nvalid options: mode, socd, threshold"
+                "unknown digital option: {keyword}\nvalid options: mode, socd, threshold, debounce"
             ),
         }
         match keyword {
@@ -313,11 +315,14 @@ fn digital(control: Directional, args: &[SExpr], vars: &HashMap<String, SExpr>) 
             }
             _ if control == Directional::Dpad => bail_expr!(
                 arg,
-                "a d-pad has no {keyword} threshold: its contacts are digital before \
-                 they reach kanata, so there is no analog value to compare"
+                "a d-pad has no {keyword}: its contacts are digital before they reach \
+                 kanata, so there is no analog value to compare or debounce"
             ),
             "threshold" => {
                 digital.threshold = unit(value(values, arg, keyword)?, vars, keyword)?;
+            }
+            "debounce" => {
+                digital.debounce = milliseconds(value(values, arg, keyword)?, vars, keyword)?;
             }
             _ => unreachable!("validated above"),
         }
@@ -354,14 +359,19 @@ fn trigger(args: &[SExpr], vars: &HashMap<String, SExpr>) -> Result<Trigger> {
                     },
                 );
             }
-            ("threshold", _) => {
+            ("threshold" | "debounce", _) => {
                 once(&mut seen, arg, format!("({keyword} ...)"))?;
-                trigger.threshold = unit(value(values, arg, keyword)?, vars, keyword)?;
+                let value = value(values, arg, keyword)?;
+                match keyword {
+                    "threshold" => trigger.threshold = unit(value, vars, keyword)?,
+                    "debounce" => trigger.debounce = milliseconds(value, vars, keyword)?,
+                    _ => unreachable!("validated above"),
+                }
             }
             _ => bail_expr!(
                 arg,
                 "unknown trigger option: {keyword}\n\
-                 valid options: threshold, mouse, scroll"
+                 valid options: threshold, debounce, mouse, scroll"
             ),
         }
     }
@@ -576,6 +586,19 @@ fn number(expr: &SExpr, vars: &HashMap<String, SExpr>, what: &str, max: f32) -> 
 /// never responds and no clue why.
 fn unit(expr: &SExpr, vars: &HashMap<String, SExpr>, what: &str) -> Result<Unit> {
     Ok(Unit::new(number(expr, vars, what, 1.0)?))
+}
+
+/// A duration in milliseconds. Zero means that a crossing takes effect now.
+fn milliseconds(expr: &SExpr, vars: &HashMap<String, SExpr>, what: &str) -> Result<u16> {
+    atom(expr, vars, "milliseconds")?
+        .parse()
+        .ok()
+        .ok_or_else(|| {
+            anyhow_expr!(
+                expr,
+                "{what} must be a whole number of milliseconds, 0-65535"
+            )
+        })
 }
 
 fn device_id(expr: &SExpr, vars: &HashMap<String, SExpr>) -> Result<NonZeroU8> {
