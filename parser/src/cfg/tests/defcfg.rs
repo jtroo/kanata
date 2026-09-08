@@ -311,3 +311,33 @@ fn per_action_require_prior_idle_on_tap_hold_release_tap_keys_release() {
         .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
         .expect("passes");
 }
+
+#[test]
+fn gamepad_controls_are_never_swept_in() {
+    // A controller is a separate device the user opts into with defsrc, so
+    // `process-unmapped-keys` must claim only the controls defsrc names.
+    let source = "
+(defcfg process-unmapped-keys yes)
+(defsrc pad-a)
+(deflayer base x)
+";
+    let cfg = parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("passes");
+    let claimed: Vec<_> = cfg
+        .mapped_keys
+        .iter()
+        .filter(|osc| osc.is_gamepad_code())
+        .collect();
+    assert_eq!(claimed, vec![&OsCode::PAD_SOUTH], "swept in {claimed:?}");
+
+    // The mechanism that makes that true: no synthetic code decodes as an OS
+    // scancode, on any platform mapping. A future table that broke this would
+    // put every controller control into every defsrc.
+    for code in OsCode::PAD_SOUTH as u16..OsCode::OSCODE_MAX as u16 {
+        assert!(
+            OsCode::from_u16(code).is_none(),
+            "{code} decodes as an OS scancode"
+        );
+    }
+}
