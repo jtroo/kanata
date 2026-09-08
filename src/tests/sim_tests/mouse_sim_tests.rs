@@ -40,9 +40,7 @@ fn mwheel_accel_stops_decel_on_mod_press() {
             ),
             result
         );
-
         // Pressing `b` which is not a modifier retains stanard deceleration behaviour.
-        // Pressing `lctl` which is a modifier immediately stops acceleration.
         let cfg = format!(
             "(defsrc)
          (deflayermap (base)
