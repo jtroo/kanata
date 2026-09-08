@@ -32,17 +32,30 @@ pub(crate) use zippychord::*;
 // that can be assumed to be used by devices still in production.
 pub(super) const KEY_IGNORE_MIN: u16 = 0x2a4; // KEY_MACRO21
 pub(super) const KEY_IGNORE_MAX: u16 = 0x2ad; // KEY_MACRO30
+
+/// Whether this code must never reach the OS.
+///
+/// Two disjoint reasons, both of which want the same answer here rather than
+/// at each writer: the macro keys above, and the synthetic gamepad controls,
+/// which name a physical control on a pad and have no scancode any OS could
+/// be asked to emit. Putting one in an output position is rejected at parse
+/// time; this is the backstop for the paths that build an output from a
+/// `defsrc` position instead of from a key name.
+fn is_ignored_output(osc: OsCode) -> bool {
+    matches!(u16::from(osc), KEY_IGNORE_MIN..=KEY_IGNORE_MAX) || osc.is_gamepad_code()
+}
+
 pub(super) fn write_key(kb: &mut KbdOut, osc: OsCode, val: KeyValue) -> Result<(), std::io::Error> {
-    match u16::from(osc) {
-        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
-        _ => kb.write_key(osc, val),
+    match is_ignored_output(osc) {
+        true => Ok(()),
+        false => kb.write_key(osc, val),
     }
 }
 pub(super) fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
     use OsCode::*;
-    match u16::from(osc) {
-        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
-        _ => match osc {
+    match is_ignored_output(osc) {
+        true => Ok(()),
+        false => match osc {
             BTN_LEFT | BTN_RIGHT | BTN_MIDDLE | BTN_SIDE | BTN_EXTRA => {
                 let btn = osc_to_btn(osc);
                 kb.click_btn(btn)
@@ -57,9 +70,9 @@ pub(super) fn press_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Err
 }
 pub(super) fn release_key(kb: &mut KbdOut, osc: OsCode) -> Result<(), std::io::Error> {
     use OsCode::*;
-    match u16::from(osc) {
-        KEY_IGNORE_MIN..=KEY_IGNORE_MAX => Ok(()),
-        _ => match osc {
+    match is_ignored_output(osc) {
+        true => Ok(()),
+        false => match osc {
             BTN_LEFT | BTN_RIGHT | BTN_MIDDLE | BTN_SIDE | BTN_EXTRA => {
                 let btn = osc_to_btn(osc);
                 kb.release_btn(btn)
@@ -134,5 +147,40 @@ pub(super) fn zippy_tick(_caps_word_is_active: bool) {
     #[cfg(feature = "zippychord")]
     {
         zch().zch_tick(_caps_word_is_active)
+    }
+}
+
+#[cfg(test)]
+mod ignored_output_tests {
+    use super::*;
+
+    #[test]
+    fn no_controller_control_can_reach_the_os() {
+        // No OS reports these as a scancode, so none can be asked to emit one.
+        // Parsing rejects them in an output position; this is the backstop for
+        // every writer that builds an output from a `defsrc` position instead
+        // of from a key name.
+        for index in 0..OsCode::GAMEPAD_COUNT {
+            let osc = OsCode::from_gamepad_index(index).expect("in range");
+            assert!(is_ignored_output(osc), "{osc} would have reached the OS");
+        }
+    }
+
+    #[test]
+    fn everything_else_keeps_the_behaviour_it_had() {
+        for osc in [OsCode::from(KEY_IGNORE_MIN), OsCode::from(KEY_IGNORE_MAX)] {
+            assert!(is_ignored_output(osc), "{osc} should still be ignored");
+        }
+        for osc in [
+            OsCode::KEY_A,
+            OsCode::KEY_LEFTSHIFT,
+            OsCode::KEY_F24,
+            OsCode::BTN_LEFT,
+            OsCode::MouseWheelUp,
+            OsCode::from(KEY_IGNORE_MIN - 1),
+            OsCode::from(KEY_IGNORE_MAX + 1),
+        ] {
+            assert!(!is_ignored_output(osc), "{osc} was wrongly suppressed");
+        }
     }
 }
