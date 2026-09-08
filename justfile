@@ -31,6 +31,7 @@ sha256sums output_dir:
   cd {{output_dir}}; sha256sum * > sha256sums
 
 test:
+  cargo fmt --all --check
   cargo test -p kanata -p kanata-parser -p kanata-keyberon -p kanata-wasm -p kanata-tcp-protocol -- --nocapture
   cargo test --features=simulated_output sim_tests
   cargo test --features=simulated_output -- must_be_single_threaded --ignored --test-threads=1
