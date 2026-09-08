@@ -54,6 +54,12 @@ pub(crate) fn parse_override_inout_keys(
                     .ok_or_else(|| {
                         anyhow_expr!(key_expr, "Unknown output key name, must use known keys")
                     })?;
+                // The same rule every other output position enforces: a
+                // controller control names a physical input on a pad, and no
+                // OS can be asked to emit one.
+                if key.is_gamepad_code() {
+                    bail_expr!(key_expr, "{key} can only be used as an input");
+                }
                 keys.push(key);
                 Ok(keys)
             })?;
