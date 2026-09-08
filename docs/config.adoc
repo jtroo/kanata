@@ -4702,6 +4702,9 @@ touchscreens, drawing tablets and some mouse replacement or
 accessibility software, are ignored. Scrolling events and mouse
 buttons are also ignored.
 
+NOTE: On Linux the https://github.com/tompassarelli/glide[Glide project]
+can integrate touchpad gestures with Kanata.
+
 The intended use of these events is to provide a way to automatically
 enable a mouse keys layer while mousing, which can be disabled by a
 timeout or typing on other keys, rather than explicit toggling. see

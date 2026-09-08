@@ -228,6 +228,7 @@ Some directories are exceptions:
 - [komokana](https://github.com/LGUG2Z/komokana): Automatic application-aware layer switching for [`komorebi`](https://github.com/LGUG2Z/komorebi) (Windows)
 - [kanata-tray](https://github.com/rszyma/kanata-tray): Control kanata from a tray icon
 - [OverKeys](https://github.com/conventoangelo/overkeys): Visual layer display for kanata - see your active layers and keymaps in real-time (Windows)
+- [Glide](https://github.com/tompassarelli/glide): detect touchpad gestures to integrate with Kanata virtual keys (Linux)
 - Application-aware layer switching:
   - [qanata (Linux)](https://github.com/veyxov/qanata)
   - [kanawin (Windows)](https://github.com/Aqaao/kanawin)
