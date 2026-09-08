@@ -1479,6 +1479,35 @@ impl Kanata {
                 )?;
             } else {
                 log::debug!("key press     {:?}", k);
+
+                // BUG(#2157): Halt wheel in decelerating state on new mod press.
+                // It is undesirable to have a lingering mwheel deceleration
+                // when pressing a new modifier key like control or alt,
+                // because these mod keys often interact with the ongoing mwheel activity
+                // in non-independent ways, e.g. zooming in/out.
+                if k.is_mod() {
+                    let v_is_decelerating =
+                        self.scroll_state.as_ref().is_some_and(|vscroll_state| {
+                            vscroll_state
+                                .scroll_accel_state
+                                .as_ref()
+                                .is_some_and(|vscroll_acc_state| vscroll_acc_state.scroll_released)
+                        });
+                    if v_is_decelerating {
+                        self.scroll_state = None;
+                    }
+                    let h_is_decelerating =
+                        self.hscroll_state.as_ref().is_some_and(|hscroll_state| {
+                            hscroll_state
+                                .scroll_accel_state
+                                .as_ref()
+                                .is_some_and(|hscroll_acc_state| hscroll_acc_state.scroll_released)
+                        });
+                    if h_is_decelerating {
+                        self.hscroll_state = None;
+                    }
+                }
+
                 if let Err(e) = press_key(&mut self.kbd_out, k.into()) {
                     bail!("failed to press key: {:?}", e);
                 }
