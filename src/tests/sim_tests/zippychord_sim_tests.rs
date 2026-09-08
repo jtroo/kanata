@@ -727,3 +727,136 @@ fn sim_zippychord_single_output() {
         result,
     );
 }
+
+// --- Leading-space chord non-determinism reproduction --------------------
+//
+// A leading space in the zippy input means SPACE is a participating chord key
+// (e.g. " a" is the chord SPACE+a). Note the explicit \n and leading spaces:
+// do NOT rewrite this with a "\" line-continuation, that would strip the
+// significant leading spaces and silently change the chords.
+static ZIPPY_LEADING_SPACE_CONTENT: &str = "\n a\ta\n das\tdass\ndas\tdas\n";
+
+// User config: short chord deadline, as in the real setup.
+static ZIPPY_CFG_DEADLINE50: &str =
+    "(defsrc lalt)(deflayer base (caps-word 2000))(defzippy file on-first-press-chord-deadline 50)";
+
+// The same press-and-hold of SPACE+a produces THREE different outputs depending
+// on (1) whether zippychord is currently enabled or in its temporary post-typing
+// disabled window, and (2) the random micro-order of the two near-simultaneous
+// presses. This is the reported non-determinism: "a", "a ", or " a" for what is
+// physically the same gesture.
+// Regression test for a press-order-dependent zippychord bug that the
+// state-machine PBT (`zippychord_state_machine.rs`) CANNOT catch: the PBT builds
+// its SUT from a trivial passthrough layout, so layout output reaches zippychord
+// immediately and identically regardless of press order. The bug only appears
+// once a chord-participating key is a `tap-hold` (or layer) key, because then the
+// layout *delays* that key's tap output by an order/timing-dependent amount.
+//
+// Here SPACE is `(tap-hold 200 200 spc ...)` while the chord deadline is 20 ticks
+// (mirrors the reported real config: space is a 200ms tap-hold thumb key, deadline
+// 50). The chord is " n" -> "no". Pressing the keys in the two orders produces
+// DIFFERENT visible output for the same physical gesture:
+//
+//   - 'n' first: 'n' starts the 20-tick chord deadline; the space tap-hold has not
+//     resolved by the time the deadline expires, so zippychord disables and the
+//     space later arrives as a literal -> "n " (chord never fires).
+//   - space first: the space tap-hold is pending (no deadline started yet); when
+//     'n' lands the space tap resolves and the full chord forms -> "no ".
+//
+// Both orders SHOULD yield the same result ("no "). They do not. This test pins
+// the current (buggy) behavior so a future fix is a deliberate, visible change.
+#[test]
+fn sim_zippy_taphold_chord_press_order_dependent() {
+    static CFG: &str = "(defsrc spc n)\
+        (deflayer base (tap-hold 200 200 spc (layer-while-held l2)) n)\
+        (deflayer l2 spc n)\
+        (defzippy file on-first-press-chord-deadline 20 \
+         idle-reactivate-time 100 smart-space full)";
+    static CONTENT: &str = "\n n\tno\n";
+
+    // 'n' pressed slightly before space: chord deadline expires before the space
+    // tap-hold resolves -> chord does NOT fire -> literal "n ".
+    let n_first =
+        simulate_with_zippy_file_content(CFG, "d:n t:5 d:spc t:10 u:n t:5 u:spc t:300", CONTENT)
+            .to_ascii();
+    assert_eq!(
+        "dn:N t:20ms dn:Space t:6ms up:N t:1ms up:Space", n_first,
+        "n-first: tap-hold space resolves after the chord deadline -> chord lost (BUG: should be \"no \")"
+    );
+
+    // space pressed slightly before 'n': space tap-hold is still pending so no
+    // deadline has started; 'n' completes the chord -> "no " (the intended result).
+    let space_first =
+        simulate_with_zippy_file_content(CFG, "d:spc t:5 d:n t:10 u:spc t:5 u:n t:300", CONTENT)
+            .to_ascii();
+    assert_eq!(
+        "t:15ms dn:Space t:6ms dn:BSpace up:BSpace up:N dn:N dn:O up:O up:Space dn:Space up:Space \
+         t:1ms up:Space t:1ms up:N",
+        space_first,
+        "space-first: chord fires correctly -> \"no \" (eager participating space `up:Space` \
+         released before the smart-space tap, so the two Space-downs don't coalesce on a real OS)"
+    );
+}
+
+#[test]
+fn sim_zippy_leading_space_nondeterministic() {
+    // (A) zippy ENABLED: the " a" chord activates; the participating space is
+    //     typed eagerly then backspaced away. Net output: "a".
+    let enabled = simulate_with_zippy_file_content(
+        ZIPPY_CFG_DEADLINE50,
+        "d:spc d:a t:300",
+        ZIPPY_LEADING_SPACE_CONTENT,
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:Space t:1ms dn:BSpace up:BSpace up:A dn:A", enabled,
+        "enabled -> chord fires -> output \"a\" (space swallowed)"
+    );
+
+    // (B) zippy temporarily DISABLED (a non-chord key 'x' was just typed), then
+    //     'a' pressed before SPACE -> literal passthrough -> "a ".
+    let disabled_a_first = simulate_with_zippy_file_content(
+        ZIPPY_CFG_DEADLINE50,
+        "d:x u:x t:5 d:a d:spc t:300",
+        ZIPPY_LEADING_SPACE_CONTENT,
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:X t:1ms up:X t:4ms dn:A t:1ms dn:Space", disabled_a_first,
+        "disabled + a-first -> literal \"a \" (trailing space)"
+    );
+
+    // (C) Same as (B) but SPACE pressed before 'a' -> literal " a".
+    let disabled_spc_first = simulate_with_zippy_file_content(
+        ZIPPY_CFG_DEADLINE50,
+        "d:x u:x t:5 d:spc d:a t:300",
+        ZIPPY_LEADING_SPACE_CONTENT,
+    )
+    .to_ascii();
+    assert_eq!(
+        "dn:X t:1ms up:X t:4ms dn:Space t:1ms dn:A", disabled_spc_first,
+        "disabled + space-first -> literal \" a\" (leading space)"
+    );
+}
+
+// Regression for the real-hardware bug where a leading-space chord activated
+// SPACE-FIRST drops its smart-space trailing space (user sees `no` instead of
+// `no `). The participating space is typed eagerly as `Space↓` and that key is
+// never released before smart-space presses `Space` again, so the output stream
+// has two `Space↓` with no `Space↑` between them. A real OS coalesces the two
+// into one held key and — since the first one's char was backspaced — the
+// trailing space is lost. The net-text oracle can't see this (it counts each
+// press as a char), so we assert the *key-state* invariant on the raw stream.
+#[test]
+fn sim_zippy_leading_space_first_no_double_space_press() {
+    static CFG: &str = "(defsrc spc n)(deflayer base spc n)(defzippy file smart-space full)";
+    static CONTENT: &str = "\n n\tno\n";
+    // space pressed first, then n, both held (no release needed to reproduce).
+    let raw = simulate_with_zippy_file_content(CFG, "d:spc d:n t:50", CONTENT).to_spaces();
+    println!("space-first raw: {raw}");
+    assert_eq!(
+        Ok(()),
+        super::zippychord_state_machine::check_no_double_press(&raw),
+        "space-first leading-space chord must not press Space twice without a release\n  raw: {raw}"
+    );
+}
