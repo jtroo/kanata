@@ -220,6 +220,11 @@ mod cli {
 
         Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
+        // Started after the processing loop so the first controller event has
+        // somewhere to go, and before the keyboard event loop, which does not
+        // return.
+        Kanata::start_gamepad(&kanata_arc, tx.clone());
+
         if let (Some(server), Some(nrx)) = (server, nrx) {
             #[allow(clippy::unit_arg)]
             Kanata::start_notification_loop(nrx, server.connections);
