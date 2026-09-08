@@ -15,6 +15,11 @@ pub(crate) fn parse_arbitrary_code(
         .atom(s.vars())
         .map(str::parse::<u16>)
         .and_then(|c| c.ok())
+        // The range in the message was never enforced. It has to be now: this
+        // writes the code straight to the OS, and everything at or above
+        // `PAD_SOUTH` begins the synthetic controller range, which has no
+        // scancodes behind it.
+        .filter(|code| *code < OsCode::PAD_SOUTH as u16)
         .ok_or_else(|| anyhow!("{ERR_MSG}: got {:?}", ac_params[0]))?;
     custom(CustomAction::SendArbitraryCode(code), &s.a)
 }

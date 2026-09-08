@@ -404,6 +404,81 @@ pub fn str_to_oscode(s: &str) -> Option<OsCode> {
         // position, in conjunction with `mouse-movement-key mvmt`
         "mvmt" | "mousemovement" | "🖰mv" => OsCode::KEY_766,
 
+        // Game controller controls. Input-only: they name a physical control
+        // on a pad, never an output scancode. See docs/config.adoc.
+        //
+        // Every name is positional rather than the glyph a vendor printed, so
+        // one config works on a DualSense, an Xbox pad and a Switch Pro pad.
+        // Face buttons, plus the pair some six-button pads add.
+        "pad-south" | "pad-a" | "pad-cross" => OsCode::PAD_SOUTH,
+        "pad-east" | "pad-b" | "pad-circle" => OsCode::PAD_EAST,
+        "pad-west" | "pad-x" | "pad-square" => OsCode::PAD_WEST,
+        "pad-north" | "pad-y" | "pad-triangle" => OsCode::PAD_NORTH,
+        "pad-c" => OsCode::PAD_C,
+        "pad-z" => OsCode::PAD_Z,
+
+        // Shoulder buttons, and the triggers' digital edge.
+        "pad-l1" | "pad-lb" => OsCode::PAD_L1,
+        "pad-r1" | "pad-rb" => OsCode::PAD_R1,
+        "pad-l2" | "pad-lt" => OsCode::PAD_L2,
+        "pad-r2" | "pad-rt" => OsCode::PAD_R2,
+
+        // Menu buttons and stick clicks.
+        "pad-select" | "pad-share" | "pad-view" | "pad-back" => OsCode::PAD_SELECT,
+        "pad-start" | "pad-options" | "pad-menu" => OsCode::PAD_START,
+        "pad-mode" | "pad-guide" | "pad-home" => OsCode::PAD_MODE,
+        "pad-l3" | "pad-lstick" => OsCode::PAD_L3,
+        "pad-r3" | "pad-rstick" => OsCode::PAD_R3,
+
+        // Left stick directions, from (stick left (digital ...)).
+        "pad-lstick-up" | "pad-ls-up" => OsCode::PAD_LSTICK_UP,
+        "pad-lstick-down" | "pad-ls-down" => OsCode::PAD_LSTICK_DOWN,
+        "pad-lstick-left" | "pad-ls-left" => OsCode::PAD_LSTICK_LEFT,
+        "pad-lstick-right" | "pad-ls-right" => OsCode::PAD_LSTICK_RIGHT,
+        "pad-lstick-upleft" | "pad-ls-upleft" => OsCode::PAD_LSTICK_UPLEFT,
+        "pad-lstick-upright" | "pad-ls-upright" => OsCode::PAD_LSTICK_UPRIGHT,
+        "pad-lstick-downleft" | "pad-ls-downleft" => OsCode::PAD_LSTICK_DOWNLEFT,
+        "pad-lstick-downright" | "pad-ls-downright" => OsCode::PAD_LSTICK_DOWNRIGHT,
+
+        // Right stick directions, from (stick right (digital ...)).
+        "pad-rstick-up" | "pad-rs-up" => OsCode::PAD_RSTICK_UP,
+        "pad-rstick-down" | "pad-rs-down" => OsCode::PAD_RSTICK_DOWN,
+        "pad-rstick-left" | "pad-rs-left" => OsCode::PAD_RSTICK_LEFT,
+        "pad-rstick-right" | "pad-rs-right" => OsCode::PAD_RSTICK_RIGHT,
+        "pad-rstick-upleft" | "pad-rs-upleft" => OsCode::PAD_RSTICK_UPLEFT,
+        "pad-rstick-upright" | "pad-rs-upright" => OsCode::PAD_RSTICK_UPRIGHT,
+        "pad-rstick-downleft" | "pad-rs-downleft" => OsCode::PAD_RSTICK_DOWNLEFT,
+        "pad-rstick-downright" | "pad-rs-downright" => OsCode::PAD_RSTICK_DOWNRIGHT,
+
+        // D-pad, unified across hat-axis and button reporting. The
+        // diagonals need (dpad (digital (mode 8way))).
+        "pad-dpad-up" | "pad-up" => OsCode::PAD_DPAD_UP,
+        "pad-dpad-down" | "pad-down" => OsCode::PAD_DPAD_DOWN,
+        "pad-dpad-left" | "pad-left" => OsCode::PAD_DPAD_LEFT,
+        "pad-dpad-right" | "pad-right" => OsCode::PAD_DPAD_RIGHT,
+        "pad-dpad-upleft" | "pad-upleft" => OsCode::PAD_DPAD_UPLEFT,
+        "pad-dpad-upright" | "pad-upright" => OsCode::PAD_DPAD_UPRIGHT,
+        "pad-dpad-downleft" | "pad-downleft" => OsCode::PAD_DPAD_DOWNLEFT,
+        "pad-dpad-downright" | "pad-downright" => OsCode::PAD_DPAD_DOWNRIGHT,
+
+        // Slots for controls no portable name covers; see (button-slot ...).
+        "pad-button-0" | "pb0" => OsCode::PAD_BUTTON_0,
+        "pad-button-1" | "pb1" => OsCode::PAD_BUTTON_1,
+        "pad-button-2" | "pb2" => OsCode::PAD_BUTTON_2,
+        "pad-button-3" | "pb3" => OsCode::PAD_BUTTON_3,
+        "pad-button-4" | "pb4" => OsCode::PAD_BUTTON_4,
+        "pad-button-5" | "pb5" => OsCode::PAD_BUTTON_5,
+        "pad-button-6" | "pb6" => OsCode::PAD_BUTTON_6,
+        "pad-button-7" | "pb7" => OsCode::PAD_BUTTON_7,
+        "pad-button-8" | "pb8" => OsCode::PAD_BUTTON_8,
+        "pad-button-9" | "pb9" => OsCode::PAD_BUTTON_9,
+        "pad-button-10" | "pb10" => OsCode::PAD_BUTTON_10,
+        "pad-button-11" | "pb11" => OsCode::PAD_BUTTON_11,
+        "pad-button-12" | "pb12" => OsCode::PAD_BUTTON_12,
+        "pad-button-13" | "pb13" => OsCode::PAD_BUTTON_13,
+        "pad-button-14" | "pb14" => OsCode::PAD_BUTTON_14,
+        "pad-button-15" | "pb15" => OsCode::PAD_BUTTON_15,
+
         _ => return None,
     })
 }
@@ -1190,6 +1265,83 @@ pub enum OsCode {
     KEY_766 = 766, // aliased to mvmt as a dummy input for use with mouse-movement-key
 
     KEY_MAX = 767,
+
+    // ---------------------------------------------------------------------
+    // Game controller controls.
+    //
+    // Synthetic: no operating system reports these as a scancode, so
+    // `from_u16` never decodes one and `process-unmapped-keys` can never
+    // sweep one into `defsrc`. They are built only through
+    // `crate::gamepad::PadCode`, which is what makes a name mean the same
+    // physical control on every platform.
+    //
+    // The range is contiguous and grouped: buttons, then eight directions
+    // for each directional control, then the assignable slots. `PadCode` is
+    // an index into it, so this order is load-bearing; `PadCode::control`
+    // inverts it and `pad_codes_tile_the_reserved_range` pins the two
+    // together.
+    //
+    // Analog values never live here: only threshold crossings and digital
+    // controls become codes, and the continuous value stays in the
+    // projector.
+    // ---------------------------------------------------------------------
+    PAD_SOUTH = 768,
+    PAD_EAST = 769,
+    PAD_WEST = 770,
+    PAD_NORTH = 771,
+    PAD_C = 772,
+    PAD_Z = 773,
+    PAD_L1 = 774,
+    PAD_R1 = 775,
+    PAD_L2 = 776,
+    PAD_R2 = 777,
+    PAD_SELECT = 778,
+    PAD_START = 779,
+    PAD_MODE = 780,
+    PAD_L3 = 781,
+    PAD_R3 = 782,
+    PAD_LSTICK_UP = 783,
+    PAD_LSTICK_DOWN = 784,
+    PAD_LSTICK_LEFT = 785,
+    PAD_LSTICK_RIGHT = 786,
+    PAD_LSTICK_UPLEFT = 787,
+    PAD_LSTICK_UPRIGHT = 788,
+    PAD_LSTICK_DOWNLEFT = 789,
+    PAD_LSTICK_DOWNRIGHT = 790,
+    PAD_RSTICK_UP = 791,
+    PAD_RSTICK_DOWN = 792,
+    PAD_RSTICK_LEFT = 793,
+    PAD_RSTICK_RIGHT = 794,
+    PAD_RSTICK_UPLEFT = 795,
+    PAD_RSTICK_UPRIGHT = 796,
+    PAD_RSTICK_DOWNLEFT = 797,
+    PAD_RSTICK_DOWNRIGHT = 798,
+    PAD_DPAD_UP = 799,
+    PAD_DPAD_DOWN = 800,
+    PAD_DPAD_LEFT = 801,
+    PAD_DPAD_RIGHT = 802,
+    PAD_DPAD_UPLEFT = 803,
+    PAD_DPAD_UPRIGHT = 804,
+    PAD_DPAD_DOWNLEFT = 805,
+    PAD_DPAD_DOWNRIGHT = 806,
+    PAD_BUTTON_0 = 807,
+    PAD_BUTTON_1 = 808,
+    PAD_BUTTON_2 = 809,
+    PAD_BUTTON_3 = 810,
+    PAD_BUTTON_4 = 811,
+    PAD_BUTTON_5 = 812,
+    PAD_BUTTON_6 = 813,
+    PAD_BUTTON_7 = 814,
+    PAD_BUTTON_8 = 815,
+    PAD_BUTTON_9 = 816,
+    PAD_BUTTON_10 = 817,
+    PAD_BUTTON_11 = 818,
+    PAD_BUTTON_12 = 819,
+    PAD_BUTTON_13 = 820,
+    PAD_BUTTON_14 = 821,
+    PAD_BUTTON_15 = 822,
+    /// One past the highest `OsCode`. This is the width of a layout row.
+    OSCODE_MAX = 823,
 }
 
 impl OsCode {
@@ -1208,6 +1360,63 @@ impl OsCode {
                 | MouseWheelRight
         )
     }
+
+    /// How many game controller controls the reserved range holds.
+    pub const GAMEPAD_COUNT: u8 = (OsCode::OSCODE_MAX as u16 - OsCode::PAD_SOUTH as u16) as u8;
+
+    /// True for the game controller controls, which occupy one contiguous
+    /// range above every real OS scancode.
+    ///
+    /// They are input-only. No OS can be asked to emit one, so the output path
+    /// ignores them the same way it ignores the reserved macro keys; see
+    /// `output_logic::write_key`.
+    pub const fn is_gamepad_code(self) -> bool {
+        self.gamepad_index().is_some()
+    }
+
+    /// This code's position within the reserved range, or `None` if it is an
+    /// ordinary key.
+    ///
+    /// The pair with [`OsCode::from_gamepad_index`] is what lets
+    /// `gamepad::PadCode` be a small index instead of a lookup table.
+    pub const fn gamepad_index(self) -> Option<u8> {
+        match (self as u16).checked_sub(OsCode::PAD_SOUTH as u16) {
+            Some(index) if index < OsCode::GAMEPAD_COUNT as u16 => Some(index as u8),
+            _ => None,
+        }
+    }
+
+    /// The `index`th control in the reserved range.
+    pub const fn from_gamepad_index(index: u8) -> Option<OsCode> {
+        if index >= OsCode::GAMEPAD_COUNT {
+            return None;
+        }
+        // SAFETY: the reserved range is a contiguous run of discriminants on a
+        // `#[repr(u16)]` enum, so every value in it names a variant. The
+        // `gamepad_indices_round_trip` test walks the whole range.
+        Some(unsafe {
+            core::mem::transmute::<u16, OsCode>(OsCode::PAD_SOUTH as u16 + index as u16)
+        })
+    }
+}
+
+#[test]
+fn gamepad_indices_round_trip() {
+    for index in 0..OsCode::GAMEPAD_COUNT {
+        let osc = OsCode::from_gamepad_index(index).expect("below the count");
+        assert_eq!(osc.gamepad_index(), Some(index));
+        assert_eq!(
+            u16::from(osc),
+            u16::from(OsCode::PAD_SOUTH) + u16::from(index)
+        );
+        // `Debug` on a transmuted value is the cheapest proof that the
+        // discriminant really names a variant.
+        assert!(format!("{osc:?}").starts_with("PAD_"), "{osc:?}");
+    }
+    assert_eq!(OsCode::from_gamepad_index(OsCode::GAMEPAD_COUNT), None);
+    assert_eq!(OsCode::KEY_A.gamepad_index(), None);
+    assert_eq!(OsCode::KEY_MAX.gamepad_index(), None);
+    assert_eq!(OsCode::OSCODE_MAX.gamepad_index(), None);
 }
 
 use core::fmt;
@@ -1224,7 +1433,7 @@ impl fmt::Display for OsCode {
 
 #[test]
 fn parser_key_max_lt_keyberon_key_max() {
-    assert!(u16::from(OsCode::KEY_MAX) < KEY_MAX);
+    assert!(u16::from(OsCode::OSCODE_MAX) < KEY_MAX);
 }
 
 #[cfg(test)]

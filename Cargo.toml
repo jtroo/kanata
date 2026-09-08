@@ -59,6 +59,18 @@ kanata-keyberon = { path = "keyberon", version = "0.1121.0" }
 kanata-parser =   { path = "parser", version = "0.1121.0" }
 kanata-tcp-protocol = { path = "tcp_protocol", version = "0.1121.0" }
 
+# Controller input. One crate covers evdev, IOKit and XInput, which is why
+# src/gamepad has no per-OS branches at all.
+#
+# `xinput` is selected over gilrs's default Windows.Gaming.Input backend on
+# purpose: WGI only delivers input to the focused window, which is unusable for
+# a background daemon, while XInput has no such restriction. The tradeoff is
+# that XInput sees only XUSB-compatible pads; DirectInput-only devices need the
+# Raw Input backend noted as follow-up work in docs/config.adoc. The feature is
+# inert on Linux and macOS, but gilrs-core fails to build with neither backend
+# feature selected on any platform, so it is set unconditionally.
+gilrs = { version = "0.11.2", default-features = false, features = ["xinput"] }
+
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "android")))'.dependencies]
 arboard = "3.4"
 
@@ -144,7 +156,6 @@ gui = ["win_manifest","kanata-parser/gui",
   "native-windows-gui/tray-notification","native-windows-gui/message-window","native-windows-gui/menu","native-windows-gui/cursor","native-windows-gui/high-dpi","native-windows-gui/embed-resource","native-windows-gui/image-decoder","native-windows-gui/notice","native-windows-gui/animation-timer",
 ]
 zippychord = ["kanata-parser/zippychord"]
-
 [profile.release]
 opt-level = "z"
 lto = "fat"
