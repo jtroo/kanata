@@ -60,14 +60,11 @@ fn motion(cfg: &GamepadConfig, control: Directional) -> (MotionKind, Motion) {
 }
 
 #[test]
-fn buttons_and_the_dpad_need_no_declaration_at_all() {
-    // Nothing about a button or a d-pad contact has to be decided before it
-    // can press a key, so requiring a declaration would be ceremony.
-    let cfg = gamepad_of("pad-a pad-l2 pad-dpad-up", "").expect("parses");
-    assert_eq!(
-        cfg.gamepad,
-        Some(GamepadConfig::default()),
-        "mapped portable controls must start the backend"
+fn mapped_pad_input_requires_a_defgamepad_declaration() {
+    let message = err("pad-a pad-l2 pad-dpad-up", "");
+    assert!(
+        message.contains("without a defgamepad entry"),
+        "{message}"
     );
 
     let keyboard_only = gamepad_of("", "").expect("parses");
@@ -85,6 +82,25 @@ fn buttons_and_the_dpad_need_no_declaration_at_all() {
     // point people expect from a trigger.
     assert_eq!(empty.trigger(Side::Right).threshold, Unit::new(0.30));
     assert_eq!(empty.trigger(Side::Right).debounce, 0);
+}
+
+#[test]
+fn a_deflayermap_pad_input_also_needs_the_declaration() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    let src = "\
+       (defcfg process-unmapped-keys no)
+       (defsrc a)
+       (deflayermap (base)
+         a x
+         pad-dpad-up w)";
+    let message = match new_from_str(src, HashMap::default()) {
+        Ok(_) => panic!("a deflayermap pad input needs defgamepad"),
+        Err(e) => flatten(&e),
+    };
+    assert!(
+        message.contains("without a defgamepad entry"),
+        "{message}"
+    );
 }
 
 #[test]

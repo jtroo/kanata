@@ -183,9 +183,9 @@ pub struct Kanata {
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
     /// A list of mouse speed modifiers in percentages by which mouse travel distance is scaled.
     pub move_mouse_speed_modifiers: Vec<u16>,
-    /// Effective controller configuration, retained so that a live reload can
-    /// hand new projections to the running backend. Also present when mapped
-    /// portable buttons require only the defaults and no `defgamepad` block.
+    /// Gamepad config declared by `defgamepad`, kept for live reload. `None`
+    /// without one: mapped `pad-*` input requires a declaration, even an
+    /// empty one.
     pub gamepad_config: Option<kanata_parser::gamepad::GamepadConfig>,
     /// Handle on the controller backend. `None` until
     /// `start_gamepad_handling_if_configured` runs, and permanently `None` for

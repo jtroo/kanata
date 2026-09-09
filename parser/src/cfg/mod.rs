@@ -318,9 +318,8 @@ pub struct Cfg {
     pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
     /// Input device ID mappings from `definputdevices`.
     pub input_devices: Option<Vec<(std::num::NonZeroU8, InputDeviceMatcher)>>,
-    /// Effective controller configuration. Present for a `defgamepad`
-    /// declaration or any mapped `pad-*` input; `None` lets a keyboard-only
-    /// configuration skip opening controller devices.
+    /// Gamepad config declared by `defgamepad`. `None` without one; mapped
+    /// `pad-*` input requires a declaration, even an empty one.
     pub gamepad: Option<crate::gamepad::GamepadConfig>,
 }
 
@@ -697,31 +696,11 @@ pub fn parse_cfg_raw_string(
     // Parsed after defvar so thresholds can be written as variables, and after
     // definputdevices so a (device N) reference can be checked against a real
     // declaration rather than failing at runtime with no controller attached.
-    let declared_gamepad = root_exprs
+    let gamepad = root_exprs
         .iter()
         .find(gen_first_atom_filter("defgamepad"))
         .map(|expr| parse_defgamepad(expr, &vars))
         .transpose()?;
-    // Validated even when there is no declaration at all. The defaults are a
-    // real configuration -- a four-way d-pad and nothing else -- so mapping
-    // `pad-lstick-up` or a d-pad diagonal without a defgamepad is the same
-    // mistake as mapping it with one, and deserves the same error naming the
-    // line that would fix it rather than a warning that cannot.
-    validate_gamepad(
-        &declared_gamepad.unwrap_or_default(),
-        input_devices.as_deref(),
-        &mapped_keys,
-    )?;
-    // A declaration is needed only for analog projections and selection.
-    // Portable buttons and d-pad cardinals deliberately work from `defsrc`
-    // alone, but they still need the backend to be started. Retain the default
-    // configuration whenever a mapped controller code makes the feature live.
-    let gamepad = declared_gamepad.or_else(|| {
-        mapped_keys
-            .iter()
-            .any(|code| code.is_gamepad_code())
-            .then(crate::gamepad::GamepadConfig::default)
-    });
 
     let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_filter = |exprs: &&Vec<SExpr>| -> bool {
@@ -898,6 +877,24 @@ pub fn parse_cfg_raw_string(
     }
 
     let mut klayers = parse_layers(s, &mut mapped_keys, &cfg)?;
+
+    // Runs after parse_layers so that deflayermap pairs, not only defsrc, are
+    // seen here. The controller backend spawns a thread and opens controller
+    // devices, as it starts only for an explicit `defgamepad`, even when empty
+    if s.gamepad.is_none() && mapped_keys.iter().any(|code| code.is_gamepad_code()) {
+        bail!(
+            "A pad-* input is defined in defsrc or deflayermap without a defgamepad entry.\n\
+             You must declare a defgamepad entry to enable the background processing of \
+             gamepad inputs,\n\
+             then restart Kanata."
+        );
+    }
+    // Validate defaults too: the default is a four-way d-pad and nothing else.
+    validate_gamepad(
+        &s.gamepad.unwrap_or_default(),
+        s.input_devices.as_deref(),
+        &mapped_keys,
+    )?;
 
     // Auto-derive the Linux device-detect mode AFTER parse_layers, because deflayermap pairs
     // (not only defsrc) can introduce mouse OsCodes into mapped_keys (issue #2096). Deriving

@@ -318,6 +318,7 @@ fn gamepad_controls_are_never_swept_in() {
     // `process-unmapped-keys` must claim only the controls defsrc names.
     let source = "
 (defcfg process-unmapped-keys yes)
+(defgamepad)
 (defsrc pad-a)
 (deflayer base x)
 ";
