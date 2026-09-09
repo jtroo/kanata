@@ -845,12 +845,7 @@ impl Kanata {
             self.gamepad_debounce_pending = false;
             let mut edges = Vec::new();
             match (&mut self.gamepad, self.gamepad_config) {
-                // A declaration that was removed is a reconfiguration to
-                // "nothing declared", not merely a release: the projectors have
-                // to stop projecting too, or the deleted stick keeps producing
-                // edges under the thresholds of a config that is no longer in
-                // the file. Buttons and triggers carry on, because they never
-                // needed a declaration in the first place.
+                (Some(gamepad), config) => {
                 (Some(gamepad), config) => {
                     gamepad.reconfigure(config.unwrap_or_default(), &mut edges)
                 }
