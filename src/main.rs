@@ -223,7 +223,7 @@ mod cli {
         // Started after the processing loop so the first controller event has
         // somewhere to go, and before the keyboard event loop, which does not
         // return.
-        Kanata::start_gamepad(&kanata_arc, tx.clone());
+        Kanata::start_gamepad_handling_if_configured(&kanata_arc, tx.clone());
 
         if let (Some(server), Some(nrx)) = (server, nrx) {
             #[allow(clippy::unit_arg)]

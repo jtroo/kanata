@@ -206,7 +206,7 @@ fn main_impl() -> Result<()> {
     };
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
-    Kanata::start_gamepad(&kanata_arc, tx.clone());
+    Kanata::start_gamepad_handling_if_configured(&kanata_arc, tx.clone());
 
     if let (Some(server), Some(nrx)) = (server, nrx) {
         #[allow(clippy::unit_arg)]

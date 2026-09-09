@@ -187,10 +187,10 @@ pub struct Kanata {
     /// hand new projections to the running backend. Also present when mapped
     /// portable buttons require only the defaults and no `defgamepad` block.
     pub gamepad_config: Option<kanata_parser::gamepad::GamepadConfig>,
-    /// Handle on the controller backend. `None` until `start_gamepad` runs,
-    /// and permanently `None` for configurations that never mention a
-    /// controller, which is what keeps kanata from opening controller devices
-    /// it was not asked to touch.
+    /// Handle on the controller backend. `None` until
+    /// `start_gamepad_handling_if_configured` runs, and permanently `None` for
+    /// configurations that never mention a controller, which is what keeps
+    /// kanata from opening controller devices it was not asked to touch.
     pub gamepad: Option<crate::gamepad::GamepadHandle>,
     /// Carries fractional pointer and scroll movement between ticks.
     gamepad_accumulator: crate::gamepad::Accumulator,
@@ -1204,12 +1204,12 @@ impl Kanata {
         Ok(())
     }
 
-    /// Start controller input if the configuration maps a controller control
-    /// or declares an analog projection.
+    /// Start controller input handling if the configuration maps a controller
+    /// control or declares an analog projection. A no-op otherwise.
     ///
     /// Separate from `new` because the backend needs the channel into the
     /// processing loop, which does not exist until the caller has built it.
-    pub fn start_gamepad(kanata: &Arc<Mutex<Self>>, tx: Sender<KeyEvent>) {
+    pub fn start_gamepad_handling_if_configured(kanata: &Arc<Mutex<Self>>, tx: Sender<KeyEvent>) {
         let mut k = kanata.lock();
         let Some(config) = k.gamepad_config else {
             return;
