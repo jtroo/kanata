@@ -4263,9 +4263,11 @@ distribution-specific answer for that native dependency.
 
 === A minimal example
 
-Buttons and the d-pad need nothing beyond `defsrc`:
+Buttons and the d-pad need no projections beyond `defsrc`, plus a `defgamepad`
+declaration to start the controller backend. It may be empty:
 
 ....
+(defgamepad)
 (defsrc pad-south pad-east pad-l1 pad-dpad-up)
 (deflayer base
   spc
@@ -4283,10 +4285,12 @@ one control, not three, so there is no vendor or profile setting to get wrong.
 
 === defgamepad
 
-Sticks, triggers and anything beyond the d-pad's four cardinals need a
-`defgamepad` declaration saying how they project into controls. `defgamepad`
-describes the *hardware*; it never names an output key, so what a projected
-control does stays in your layers where it can differ per layer.
+Every controller configuration requires a `defgamepad` declaration, even an
+empty one: the declaration is what starts the controller backend.
+Mapped `pad-*` input without one is a configuration error.
+The declaration describes how physical readings project onto controls; it
+never names an output key, so what a projected control does stays in your
+layers where it can differ per layer.
 
 ....
 (defgamepad
@@ -4336,7 +4340,7 @@ reads the same value without disturbing the others.
 
 | `(digital ...)`
 | Threshold crossings press `pad-lstick-*`, `pad-rstick-*` or `pad-dpad-*`.
-  On a d-pad this is the default and needs no declaration.
+  On a d-pad this is the default and needs no projection item.
 
 | `(mouse ...)`
 | The control moves the pointer.
@@ -4500,7 +4504,7 @@ than accepting a setting that can never do anything.
 
 === Controller control names
 
-Buttons, usable in `defsrc` with no `defgamepad`:
+Buttons, usable in `defsrc` alongside an empty `(defgamepad)`:
 
 [cols="1,3"]
 |===
@@ -4565,11 +4569,10 @@ nothing.
   used rather than Windows.Gaming.Input because WGI only delivers input to
   the focused window, which a background daemon never has.
 * *Adding controller input to a running instance needs a restart.* This means
-  adding either the first mapped `pad-*` input or a `defgamepad` declaration.
-  Changing an active declaration works on live reload, and removing one stops
-  only the projections that declaration created — in both cases anything the
-  old declaration held is released first. Buttons and the d-pad keep working
-  after a removal, because they never needed a declaration to begin with.
+  adding `defgamepad` to a config that had none, adding the first mapped
+  `pad-*` input alongside it, or changing controller selection with
+  `(device N)`. Mapped `pad-*` input without any `defgamepad` is rejected at
+  parse time. Other changes take effect on live reload.
 * *`process-unmapped-keys` never claims controller inputs.* Controller inputs
   must be named in `defsrc`, the same way mouse buttons are.
 * *Controller controls cannot be used as output.* They name a physical control
