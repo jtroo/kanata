@@ -2663,8 +2663,7 @@ fn run_multi_cmd(cmds: Vec<(Option<log::Level>, Option<log::Level>, Vec<String>)
 }
 
 /// Returns true if the two directions are exact opposites on the same axis
-/// (up/down or left/right). Used to reset mouse acceleration on direction
-/// reversal (see fix #2142).
+/// (up/down or left/right).
 fn is_opposite_move_direction(a: MoveDirection, b: MoveDirection) -> bool {
     use MoveDirection::*;
     matches!(
