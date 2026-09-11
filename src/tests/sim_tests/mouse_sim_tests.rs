@@ -82,3 +82,28 @@ fn movemouse_accel_resets_on_direction_reversal() {
         result
     );
 }
+
+#[test]
+fn movemouse_accel_reversal_keeps_other_axis_inheritance() {
+    // With `movemouse-inherit-accel-state yes`, a same-axis reversal must
+    // still let the *other* axis be inherited from. Up is held and maxed
+    // out first, then left is pressed (cross-axis inherit from up, so it
+    // starts maxed), then right is pressed while left is still held (a
+    // same-axis reversal on left/right). Right must reset relative to
+    // left, but it can still inherit the still-active, still-maxed up
+    // state, so it also starts maxed rather than ramping from the minimum.
+    let result = simulate(
+        "(defcfg movemouse-inherit-accel-state yes)
+         (defsrc a b c)
+         (deflayermap (base)
+           a (movemouse-accel-up 1 3 1 4)
+           b (movemouse-accel-left 1 3 1 4)
+           c (movemouse-accel-right 1 3 1 4))",
+        "d:a t:6 d:b t:6 d:c t:2 u:a u:b u:c t:2",
+    )
+    .to_ascii();
+    assert_eq!(
+        "out🖰:move Up,1 t:1ms out🖰:move Up,2 t:1ms out🖰:move Up,3 t:1ms out🖰:move Up,4 t:1ms out🖰:move Up,4 t:1ms out🖰:move Up,4 t:1ms out🖰:move Up,4 out🖰:move Left,4 t:1ms out🖰:move Up,4 out🖰:move Left,4 t:1ms out🖰:move Up,4 out🖰:move Left,4 t:1ms out🖰:move Up,4 out🖰:move Left,4 t:1ms out🖰:move Up,4 out🖰:move Left,4 t:1ms out🖰:move Up,4 out🖰:move Left,4 t:1ms out🖰:move Up,4 out🖰:move Right,4 t:1ms out🖰:move Up,4 out🖰:move Right,4 t:1ms out🖰:move Right,4 t:1ms out🖰:move Right,4",
+        result
+    );
+}

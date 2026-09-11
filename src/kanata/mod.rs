@@ -1626,32 +1626,39 @@ impl Kanata {
                         min_distance,
                         max_distance,
                     } => {
-                        // Fix #2142: when reversing direction on the same axis
-                        // (e.g. accel-left then accel-right), the acceleration
-                        // must reset instead of being inherited, matching the
-                        // fixed QMK behavior (qmk/qmk_firmware#4242). Inheriting
-                        // here would carry a maxed-out speed into the reversed
-                        // movement, causing a jarring turnaround on overshoot.
-                        let same_axis_state = match direction {
-                            MoveDirection::Up | MoveDirection::Down => {
-                                &self.move_mouse_state_vertical
-                            }
-                            MoveDirection::Left | MoveDirection::Right => {
-                                &self.move_mouse_state_horizontal
-                            }
+                        // Inheriting acceleration is normally desired so that a new
+                        // axis starts at the same speed as one already in flight
+                        // (e.g. diagonal movement), matching QMK's behavior. But
+                        // reversing direction on the *same* axis (accel-left held,
+                        // then accel-right pressed) must reset instead of
+                        // inheriting: otherwise the maxed-out speed carries into
+                        // the reversed movement and causes a jarring turnaround
+                        // on overshoot. The other axis is unaffected by this axis
+                        // reversing, so it stays eligible to be inherited from.
+                        let is_horizontal = matches!(
+                            direction,
+                            MoveDirection::Left | MoveDirection::Right
+                        );
+                        let same_axis_state = if is_horizontal {
+                            &self.move_mouse_state_horizontal
+                        } else {
+                            &self.move_mouse_state_vertical
                         };
                         let reversing_direction = matches!(
                             same_axis_state,
                             Some(MoveMouseState { direction: active, .. })
                                 if is_opposite_move_direction(*active, *direction)
                         );
-                        let inherited_accel_state = if self.movemouse_inherit_accel_state
-                            && !reversing_direction
-                        {
-                            match (
-                                &self.move_mouse_state_horizontal,
-                                &self.move_mouse_state_vertical,
-                            ) {
+                        let horizontal_source = self
+                            .move_mouse_state_horizontal
+                            .as_ref()
+                            .filter(|_| !(is_horizontal && reversing_direction));
+                        let vertical_source = self
+                            .move_mouse_state_vertical
+                            .as_ref()
+                            .filter(|_| !(!is_horizontal && reversing_direction));
+                        let inherited_accel_state = if self.movemouse_inherit_accel_state {
+                            match (horizontal_source, vertical_source) {
                                 (
                                     Some(MoveMouseState {
                                         move_mouse_accel_state: Some(s),
