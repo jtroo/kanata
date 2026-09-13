@@ -78,7 +78,13 @@ mod unmod_sim_tests;
 mod use_defsrc_sim_tests;
 mod vkey_sim_tests;
 #[cfg(feature = "zippychord")]
+mod zippychord_minimizer;
+#[cfg(feature = "zippychord")]
+mod zippychord_proptest;
+#[cfg(feature = "zippychord")]
 mod zippychord_sim_tests;
+#[cfg(feature = "zippychord")]
+mod zippychord_state_machine;
 
 fn simulate<S: AsRef<str>>(cfg: S, sim: S) -> String {
     simulate_with_file_content(cfg, sim, Default::default())
@@ -94,6 +100,9 @@ fn simulate_with_file_content<S: AsRef<str>>(
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
+    // Start from a clean global key state so a prior test (e.g. the zippychord
+    // state-machine PBT, which manipulates this global) cannot contaminate us.
+    crate::PRESSED_KEYS.lock().clear();
     let mut k = Kanata::new_from_str(cfg.as_ref(), file_content).expect("failed to parse cfg");
     for pair in sim.as_ref().split_whitespace() {
         match pair.split_once(':') {

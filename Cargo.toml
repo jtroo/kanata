@@ -121,6 +121,17 @@ embed-resource = { version = "2.4.2", optional = true }
 indoc = { version = "2.0.4", optional = true }
 regex = { version = "1.10.4", optional = true }
 
+[dev-dependencies]
+# Temporary: fork adds JSON-serializable regressions that replay the exact
+# initial state + transitions (instead of an RNG seed that regenerates
+# differently when the strategy changes). Both crates must come from the same
+# fork so there is a single `proptest` version in the graph. Revert to the
+# crates.io releases once the serializable-regressions support lands upstream
+# (https://github.com/proptest-rs/proptest).
+proptest = { git = "https://github.com/nightscape/proptest", branch = "feat/state-machine-persisted-transitions" }
+proptest-state-machine = { git = "https://github.com/nightscape/proptest", branch = "feat/state-machine-persisted-transitions", features = ["persistence"] }
+serde = { version = "1", features = ["derive"] }
+
 [features]
 default = ["tcp_server","win_sendinput_send_scancodes", "zippychord"]
 perf_logging = []

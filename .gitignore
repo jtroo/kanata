@@ -8,3 +8,8 @@ PLAN.md
 test_*.kbd
 manual_test/
 *.test.kbd
+
+# proptest's per-seed RNG regression file for the zippychord state machine.
+# The replayable regressions live in proptest-regressions/state-machine/*.jsonl
+# (committed); proptest still drops this seed file on a local failure.
+proptest-regressions/tests/sim_tests/zippychord_state_machine.txt
