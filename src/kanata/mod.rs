@@ -1626,43 +1626,72 @@ impl Kanata {
                         min_distance,
                         max_distance,
                     } => {
-                        let move_mouse_accel_state = match (
-                            self.movemouse_inherit_accel_state,
-                            &self.move_mouse_state_horizontal,
-                            &self.move_mouse_state_vertical,
-                        ) {
-                            (
-                                true,
-                                Some(MoveMouseState {
-                                    move_mouse_accel_state: Some(s),
-                                    ..
-                                }),
-                                _,
-                            )
-                            | (
-                                true,
-                                _,
-                                Some(MoveMouseState {
-                                    move_mouse_accel_state: Some(s),
-                                    ..
-                                }),
-                            ) => *s,
-                            _ => {
-                                let f_max_distance: f64 = *max_distance as f64;
-                                let f_min_distance: f64 = *min_distance as f64;
-                                let f_accel_time: f64 = *accel_time as f64;
-                                let increment =
-                                    (f_max_distance - f_min_distance) / f_accel_time;
-
-                                MoveMouseAccelState {
-                                    accel_ticks_from_min: 0,
-                                    accel_ticks_until_max: *accel_time,
-                                    accel_increment: increment,
-                                    min_distance: *min_distance,
-                                    max_distance: *max_distance,
-                                }
-                            }
+                        // Inheriting acceleration is normally desired so that a new
+                        // axis starts at the same speed as one already in flight
+                        // (e.g. diagonal movement), matching QMK's behavior. But
+                        // reversing direction on the *same* axis (accel-left held,
+                        // then accel-right pressed) must reset instead of
+                        // inheriting: otherwise the maxed-out speed carries into
+                        // the reversed movement and causes a jarring turnaround
+                        // on overshoot. The other axis is unaffected by this axis
+                        // reversing, so it stays eligible to be inherited from.
+                        let is_horizontal = matches!(
+                            direction,
+                            MoveDirection::Left | MoveDirection::Right
+                        );
+                        let same_axis_state = if is_horizontal {
+                            &self.move_mouse_state_horizontal
+                        } else {
+                            &self.move_mouse_state_vertical
                         };
+                        let reversing_direction = matches!(
+                            same_axis_state,
+                            Some(MoveMouseState { direction: active, .. })
+                                if is_opposite_move_direction(*active, *direction)
+                        );
+                        let horizontal_source = self
+                            .move_mouse_state_horizontal
+                            .as_ref()
+                            .filter(|_| !(is_horizontal && reversing_direction));
+                        let vertical_source = self
+                            .move_mouse_state_vertical
+                            .as_ref()
+                            .filter(|_| !(!is_horizontal && reversing_direction));
+                        let inherited_accel_state = if self.movemouse_inherit_accel_state {
+                            match (horizontal_source, vertical_source) {
+                                (
+                                    Some(MoveMouseState {
+                                        move_mouse_accel_state: Some(s),
+                                        ..
+                                    }),
+                                    _,
+                                )
+                                | (
+                                    _,
+                                    Some(MoveMouseState {
+                                        move_mouse_accel_state: Some(s),
+                                        ..
+                                    }),
+                                ) => Some(*s),
+                                _ => None,
+                            }
+                        } else {
+                            None
+                        };
+                        let move_mouse_accel_state = inherited_accel_state.unwrap_or_else(|| {
+                            let f_max_distance: f64 = *max_distance as f64;
+                            let f_min_distance: f64 = *min_distance as f64;
+                            let f_accel_time: f64 = *accel_time as f64;
+                            let increment = (f_max_distance - f_min_distance) / f_accel_time;
+
+                            MoveMouseAccelState {
+                                accel_ticks_from_min: 0,
+                                accel_ticks_until_max: *accel_time,
+                                accel_increment: increment,
+                                min_distance: *min_distance,
+                                max_distance: *max_distance,
+                            }
+                        });
 
                         match direction {
                             MoveDirection::Up | MoveDirection::Down => {
@@ -2631,6 +2660,16 @@ fn run_multi_cmd(cmds: Vec<(Option<log::Level>, Option<log::Level>, Vec<String>)
             }
         }
     });
+}
+
+/// Returns true if the two directions are exact opposites on the same axis
+/// (up/down or left/right).
+fn is_opposite_move_direction(a: MoveDirection, b: MoveDirection) -> bool {
+    use MoveDirection::*;
+    matches!(
+        (a, b),
+        (Up, Down) | (Down, Up) | (Left, Right) | (Right, Left)
+    )
 }
 
 fn apply_mouse_distance_modifiers(initial_distance: u16, mods: &Vec<u16>) -> u16 {

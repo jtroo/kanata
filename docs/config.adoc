@@ -4398,9 +4398,15 @@ For more context, see https://github.com/jtroo/kanata/issues/435.
 By default `movemouse-accel` actions will track the acceleration
 state for vertical and horizontal axes separately.
 
-When this setting is enabled, `movemouse-accel` will behave exactly like mouse movements in https://qmk.fm[QMK],
+When this setting is enabled, `movemouse-accel` will behave like mouse movements in https://qmk.fm[QMK],
 i.e. the acceleration state of new mouse
 movement actions will be inherited if others are already being pressed.
+
+Reversing direction on an axis (for example switching from
+`movemouse-accel-left` to `movemouse-accel-right`) resets the acceleration
+back to the minimum distance rather than inheriting the current speed. This
+matches QMK's behavior after https://github.com/qmk/qmk_firmware/issues/4242
+was fixed.
 
 .Example:
 [source]
