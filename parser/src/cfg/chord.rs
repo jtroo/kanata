@@ -72,13 +72,12 @@ pub(crate) fn parse_defchordv2(
         .collect::<Vec<_>>();
     for chord in successful {
         for pkey in chord.participating_keys.iter().copied() {
-            //log::trace!("chord for key:{pkey:?} > {chord:?}");
             chords_container
                 .mapping
                 .entry(pkey)
                 .or_insert(ChordsForKey { chords: vec![] })
                 .chords
-                .push(s.a.sref(chord.clone()));
+                .push(chord);
         }
     }
     let rem = chunks.1;
@@ -96,7 +95,7 @@ fn parse_single_chord(
     chunk: &[SExpr],
     s: &ParserState,
     all_participating_key_sets: &mut FxHashSet<Vec<u16>>,
-) -> Result<ChordV2<'static, KanataCustom>> {
+) -> Result<&'static ChordV2<'static, KanataCustom>> {
     let participants = parse_participating_keys(&chunk[0], s)?;
     if !all_participating_key_sets.insert(participants.clone()) {
         bail_expr!(
@@ -115,7 +114,7 @@ fn parse_single_chord(
         disabled_layers: s.a.sref_vec(disabled_layers),
         release_behaviour,
     };
-    Ok(s.a.sref(chord).clone())
+    Ok(s.a.sref(chord))
 }
 
 fn parse_participating_keys(keys: &SExpr, s: &ParserState) -> Result<Vec<u16>> {

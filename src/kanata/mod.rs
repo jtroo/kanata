@@ -1649,14 +1649,15 @@ impl Kanata {
                             Some(MoveMouseState { direction: active, .. })
                                 if is_opposite_move_direction(*active, *direction)
                         );
+                        let is_vertical = !is_horizontal;
                         let horizontal_source = self
                             .move_mouse_state_horizontal
                             .as_ref()
-                            .filter(|_| !(is_horizontal && reversing_direction));
+                            .filter(|_| is_vertical || !reversing_direction);
                         let vertical_source = self
                             .move_mouse_state_vertical
                             .as_ref()
-                            .filter(|_| !(!is_horizontal && reversing_direction));
+                            .filter(|_| is_horizontal || !reversing_direction);
                         let inherited_accel_state = if self.movemouse_inherit_accel_state {
                             match (horizontal_source, vertical_source) {
                                 (
