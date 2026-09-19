@@ -18,7 +18,13 @@ use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 
 #[cfg(feature = "tcp_server")]
-pub type Connections = Arc<Mutex<HashMap<String, TcpStream>>>;
+pub type Connections = Arc<Mutex<HashMap<String, ClientConnection>>>;
+
+#[cfg(feature = "tcp_server")]
+pub struct ClientConnection {
+    pub stream: TcpStream,
+    pub physical_key_events: bool,
+}
 
 #[cfg(not(feature = "tcp_server"))]
 pub type Connections = ();
@@ -173,7 +179,10 @@ impl TcpServer {
 
                         connections.lock().insert(
                             addr.clone(),
-                            stream.try_clone().expect("stream is clonable"),
+                            ClientConnection {
+                                stream: stream.try_clone().expect("stream is clonable"),
+                                physical_key_events: false,
+                            },
                         );
                         let reader = serde_json::Deserializer::from_reader(
                             stream.try_clone().expect("stream is clonable"),
@@ -322,6 +331,7 @@ impl TcpServer {
                                                     "current-layer-info".to_string(),
                                                     "fake-key".to_string(),
                                                     "set-mouse".to_string(),
+                                                    "physical-key-events".to_string(),
                                                 ];
                                                 let msg = ServerMessage::HelloOk {
                                                     version,
@@ -339,6 +349,23 @@ impl TcpServer {
                                                         connections.lock().remove(&addr);
                                                         break;
                                                     }
+                                                }
+                                            }
+                                            ClientMessage::SubscribePhysicalKeyEvents {
+                                                enabled,
+                                            } => {
+                                                if let Some(connection) =
+                                                    connections.lock().get_mut(&addr)
+                                                {
+                                                    connection.physical_key_events = enabled;
+                                                }
+                                                if !send_response(
+                                                    &mut stream,
+                                                    ServerResponse::Ok,
+                                                    &connections,
+                                                    &addr,
+                                                ) {
+                                                    break;
                                                 }
                                             }
                                             // Reload commands with optional wait/timeout
@@ -479,4 +506,100 @@ pub fn simple_sexpr_to_json_array(exprs: &[SimpleSExpr]) -> serde_json::Value {
     }
 
     serde_json::Value::Array(result)
+}
+
+#[cfg(all(test, feature = "tcp_server"))]
+mod tests {
+    use super::*;
+    use kanata_parser::keys::OsCode;
+    use std::io::{BufRead, BufReader};
+    use std::sync::mpsc::sync_channel;
+    use std::time::Duration;
+
+    fn read_json_line(reader: &mut BufReader<TcpStream>) -> String {
+        let mut line = String::new();
+        reader.read_line(&mut line).expect("read TCP message");
+        line
+    }
+
+    #[test]
+    fn physical_key_events_are_delivered_only_while_subscribed() {
+        let reservation = TcpListener::bind("127.0.0.1:0").expect("reserve test port");
+        let address = reservation.local_addr().expect("get test address");
+        drop(reservation);
+
+        let kanata = Kanata::new_from_str("(defsrc a)\n(deflayer base b)", Default::default())
+            .expect("create test Kanata");
+        let kanata = Arc::new(Mutex::new(kanata));
+        let (input_tx, input_rx) = sync_channel(100);
+        let (notification_tx, notification_rx) = sync_channel(100);
+        let mut server = TcpServer::new(address, input_tx.clone());
+        server.start(kanata.clone());
+        Kanata::start_notification_loop(notification_rx, server.connections.clone());
+        Kanata::start_processing_loop(kanata, input_rx, Some(notification_tx), true);
+
+        let mut stream = (0..50)
+            .find_map(|_| match TcpStream::connect(address) {
+                Ok(stream) => Some(stream),
+                Err(_) => {
+                    std::thread::sleep(Duration::from_millis(10));
+                    None
+                }
+            })
+            .expect("connect to test TCP server");
+        stream
+            .set_read_timeout(Some(Duration::from_millis(200)))
+            .expect("set timeout");
+        let mut reader = BufReader::new(stream.try_clone().expect("clone test stream"));
+
+        let initial = read_json_line(&mut reader);
+        assert!(initial.contains("LayerChange"));
+
+        input_tx
+            .send(KeyEvent::new(OsCode::KEY_A, KeyValue::Press))
+            .expect("send unsubscribed physical event");
+        let mut absent = String::new();
+        assert!(reader.read_line(&mut absent).is_err());
+
+        stream
+            .write_all(
+                &serde_json::to_vec(&ClientMessage::SubscribePhysicalKeyEvents { enabled: true })
+                    .expect("serialize subscription"),
+            )
+            .expect("write subscription");
+        stream.write_all(b"\n").expect("terminate subscription");
+        let response = read_json_line(&mut reader);
+        assert_eq!(response, "{\"status\":\"Ok\"}\n");
+
+        input_tx
+            .send(KeyEvent::new(OsCode::KEY_A, KeyValue::Release))
+            .expect("send subscribed physical event");
+        let notification = read_json_line(&mut reader);
+        let message: ServerMessage =
+            serde_json::from_str(&notification).expect("parse physical notification");
+        assert!(matches!(
+            message,
+            ServerMessage::PhysicalKey {
+                key,
+                state: PhysicalKeyState::Release,
+                ..
+            } if key == "a"
+        ));
+
+        stream
+            .write_all(
+                &serde_json::to_vec(&ClientMessage::SubscribePhysicalKeyEvents { enabled: false })
+                    .expect("serialize unsubscription"),
+            )
+            .expect("write unsubscription");
+        stream.write_all(b"\n").expect("terminate unsubscription");
+        let response = read_json_line(&mut reader);
+        assert_eq!(response, "{\"status\":\"Ok\"}\n");
+
+        input_tx
+            .send(KeyEvent::new(OsCode::KEY_A, KeyValue::Press))
+            .expect("send unsubscribed physical event");
+        absent.clear();
+        assert!(reader.read_line(&mut absent).is_err());
+    }
 }
