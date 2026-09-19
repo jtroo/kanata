@@ -274,7 +274,9 @@ use kanata_keyberon::key_code::KeyCode::*;
 pub(super) fn do_successful_sequence_termination(
     kbd_out: &mut KbdOut,
     state: &mut SequenceState,
-    layout: &mut Layout<'_, 767, 2, &CustomAction>,
+    // The parser already names this shape; spelling the row width out here
+    // once let it silently desynchronize from the layout.
+    layout: &mut BorrowedKLayout<'_>,
     i: u8,
     j: u16,
     seq_type: EndSequenceType,

@@ -73,6 +73,8 @@ jobs:
         shared-key: "persist-cross-job"
         workspaces: ./
     - run: rustup component add clippy
+    - name: Install libudev
+      run: sudo apt-get update && sudo apt-get install -y libudev-dev
 
     - name: Run tests no features
       run: cargo test --all --no-default-features

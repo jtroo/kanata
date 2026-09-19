@@ -206,6 +206,8 @@ fn main_impl() -> Result<()> {
     };
     Kanata::start_processing_loop(kanata_arc.clone(), rx, ntx, args.nodelay);
 
+    Kanata::start_gamepad(&kanata_arc, tx.clone());
+
     if let (Some(server), Some(nrx)) = (server, nrx) {
         #[allow(clippy::unit_arg)]
         Kanata::start_notification_loop(nrx, server.connections);

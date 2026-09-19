@@ -1,0 +1,102 @@
+;; Game controller input.
+;;
+;; A controller is used alongside the keyboard, not instead of it: the pad is
+;; not seized, so games and the desktop still see it. Controller controls are
+;; ordinary kanata inputs, so layers, tap-hold, chords and macros all work on
+;; them.
+;;
+;; Names describe position, never the glyph printed on the pad. `pad-south` is the
+;; lower face button on every controller, so this file works unchanged on a
+;; DualSense, an Xbox pad and a Switch Pro controller.
+;;
+;; Full reference: docs/config.adoc, "Game controllers".
+
+(defcfg
+  process-unmapped-keys no
+)
+
+;; defgamepad declares the hardware and how it projects. It never names an
+;; output key -- that stays in the layers below, so the same physical control
+;; can mean different things on different layers.
+;;
+;; The two sticks and the d-pad take the same options, because they are the
+;; same kind of thing: a control that points a direction.
+(defgamepad
+  ;; Left stick as a direction pad. 4way means a diagonal presses two
+  ;; cardinals, the way holding W and D does.
+  ;;
+  ;; `threshold` is a fraction of physical deflection and nothing else moves
+  ;; it. A digital projection has no deadzone because one threshold is enough.
+  (stick left
+    (digital (mode 4way) (threshold 0.50)))
+
+  ;; Right stick as the pointer. The cubic curve gives fine control near
+  ;; center and full speed at the rim, and the deadzone keeps a resting stick
+  ;; from drifting the cursor.
+  (stick right
+    (mouse (deadzone 0.12) (speed 1200) (curve cubic)))
+
+  ;; The d-pad in eight-way, so a diagonal is its own control rather than two
+  ;; cardinals at once.
+  ;;
+  ;; It is also the one control that can report Up and Down together, because
+  ;; its four contacts are independent. By default kanata passes both through,
+  ;; since that is what the user did; `socd neutral` asks for the
+  ;; fighting-game answer instead, where an opposed pair cancels.
+  (dpad
+    (digital (mode 8way) (socd neutral)))
+
+  ;; Triggers actuate early, as people expect from a trigger.
+  (trigger left  (threshold 0.30))
+  ;; The right one keeps that digital edge *and* drives the wheel, so how hard
+  ;; you squeeze decides how fast the page scrolls.
+  (trigger right (threshold 0.30) (scroll down (speed 30)))
+)
+
+(defsrc
+  pad-south pad-east pad-west pad-north
+  pad-l1 pad-r1 pad-l2 pad-r2
+  pad-l3 pad-r3
+  pad-select pad-start
+  pad-dpad-up pad-dpad-down pad-dpad-left pad-dpad-right
+  pad-dpad-upleft pad-dpad-upright pad-dpad-downleft pad-dpad-downright
+  pad-lstick-up pad-lstick-down pad-lstick-left pad-lstick-right
+)
+
+(defalias
+  ;; Tapped for space, held to reach the navigation layer. This composes for
+  ;; free: nothing in tap-hold knows a controller exists.
+  jump (tap-hold 200 200 spc (layer-while-held nav))
+  ;; A controller button holding a modifier, like any other key.
+  shift (layer-while-held shifted)
+)
+
+(deflayer base
+  @jump    esc      bspc     ret
+  @shift   lctl     lsft     mlft
+  lmet     lalt
+  tab      ret
+  up       down     left     rght
+  home     pgup     end      pgdn
+  w        s        a        d
+)
+
+(deflayer nav
+  _        _        _        _
+  _        _        _        mrgt
+  _        _
+  _        _
+  pgup     pgdn     home     end
+  _        _        _        _
+  up       down     left     rght
+)
+
+(deflayer shifted
+  _        _        _        _
+  _        _        _        _
+  _        _
+  _        _
+  _        _        _        _
+  _        _        _        _
+  S-w      S-s      S-a      S-d
+)

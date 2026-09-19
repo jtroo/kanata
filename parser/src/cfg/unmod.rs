@@ -65,18 +65,22 @@ pub(crate) fn parse_unmod(
     }
 
     let keys: Vec<KeyCode> = params.iter().try_fold(Vec::new(), |mut keys, param| {
-        keys.push(
-            param
-                .atom(s.vars())
-                .and_then(str_to_oscode)
-                .ok_or_else(|| {
-                    anyhow_expr!(
-                        &ac_params[0],
-                        "{unmod_type} {ERR_MSG}\nfound invalid key name"
-                    )
-                })?
-                .into(),
-        );
+        let osc = param
+            .atom(s.vars())
+            .and_then(str_to_oscode)
+            .ok_or_else(|| {
+                anyhow_expr!(
+                    &ac_params[0],
+                    "{unmod_type} {ERR_MSG}\nfound invalid key name"
+                )
+            })?;
+        // These keys are appended to the output list directly rather than
+        // going through an action, so the check `parse_action_atom` makes for
+        // every other output position has to be repeated here.
+        if osc.is_gamepad_code() || osc == OsCode::KEY_766 {
+            bail_expr!(param, "{osc} can only be used as an input");
+        }
+        keys.push(osc.into());
         Ok::<_, ParseError>(keys)
     })?;
     let keys = s.a.sref_vec(keys);

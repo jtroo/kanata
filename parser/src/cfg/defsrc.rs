@@ -51,6 +51,9 @@ pub(crate) fn parse_defsrc(
     log::info!("process unmapped keys: {}", defcfg.process_unmapped_keys);
     if defcfg.process_unmapped_keys {
         for osc in 0..KEYS_IN_ROW as u16 {
+            // Controller controls need no exclusion here: they are synthetic,
+            // so `from_u16` never decodes one. `gamepad_controls_are_never_swept_in`
+            // pins that down.
             if let Some(osc) = OsCode::from_u16(osc) {
                 if osc.is_mouse_code() {
                     // Bugfix #1879:

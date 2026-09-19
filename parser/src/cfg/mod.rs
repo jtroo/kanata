@@ -56,6 +56,8 @@ mod custom_tap_hold;
 use custom_tap_hold::*;
 mod defcfg;
 pub use defcfg::*;
+mod defgamepad;
+pub use defgamepad::*;
 mod definputdevices;
 pub use definputdevices::*;
 mod defhands;
@@ -316,6 +318,10 @@ pub struct Cfg {
     pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
     /// Input device ID mappings from `definputdevices`.
     pub input_devices: Option<Vec<(std::num::NonZeroU8, InputDeviceMatcher)>>,
+    /// Effective controller configuration. Present for a `defgamepad`
+    /// declaration or any mapped `pad-*` input; `None` lets a keyboard-only
+    /// configuration skip opening controller devices.
+    pub gamepad: Option<crate::gamepad::GamepadConfig>,
 }
 
 /// Parse a new configuration from a file.
@@ -410,6 +416,7 @@ fn populate_cfg_with_icfg(icfg: IntermediateCfg, s: ParserState) -> Cfg {
         max_key_timing_check,
         zippy: icfg.zippy,
         input_devices: s.input_devices,
+        gamepad: s.gamepad,
     }
 }
 
@@ -677,6 +684,45 @@ pub fn parse_cfg_raw_string(
         .map(|expr| parse_definputdevices(expr, &vars))
         .transpose()?;
 
+    if let Some(spanned) = spanned_root_exprs
+        .iter()
+        .filter(gen_first_atom_filter_spanned("defgamepad"))
+        .nth(1)
+    {
+        bail_span!(
+            spanned,
+            "Only one defgamepad is allowed, found more. Delete the extras."
+        )
+    }
+    // Parsed after defvar so thresholds can be written as variables, and after
+    // definputdevices so a (device N) reference can be checked against a real
+    // declaration rather than failing at runtime with no controller attached.
+    let declared_gamepad = root_exprs
+        .iter()
+        .find(gen_first_atom_filter("defgamepad"))
+        .map(|expr| parse_defgamepad(expr, &vars))
+        .transpose()?;
+    // Validated even when there is no declaration at all. The defaults are a
+    // real configuration -- a four-way d-pad and nothing else -- so mapping
+    // `pad-lstick-up` or a d-pad diagonal without a defgamepad is the same
+    // mistake as mapping it with one, and deserves the same error naming the
+    // line that would fix it rather than a warning that cannot.
+    validate_gamepad(
+        &declared_gamepad.unwrap_or_default(),
+        input_devices.as_deref(),
+        &mapped_keys,
+    )?;
+    // A declaration is needed only for analog projections and selection.
+    // Portable buttons and d-pad cardinals deliberately work from `defsrc`
+    // alone, but they still need the backend to be started. Retain the default
+    // configuration whenever a mapped controller code makes the feature live.
+    let gamepad = declared_gamepad.or_else(|| {
+        mapped_keys
+            .iter()
+            .any(|code| code.is_gamepad_code())
+            .then(crate::gamepad::GamepadConfig::default)
+    });
+
     let deflayer_labels = [DEFLAYER, DEFLAYER_MAPPED];
     let deflayer_filter = |exprs: &&Vec<SExpr>| -> bool {
         if exprs.is_empty() {
@@ -786,6 +832,7 @@ pub fn parse_cfg_raw_string(
         vars,
         max_key_timing_check: Cell::new(cfg.rapid_event_delay),
         input_devices,
+        gamepad,
         ..Default::default()
     };
 
@@ -1063,7 +1110,8 @@ fn error_on_unknown_top_level_atoms(exprs: &[Spanned<Vec<SExpr>>]) -> Result<()>
                 | "defzippy-experimental"
                 | "defseq"
                 | "defhands"
-                | "definputdevices" => Ok(()),
+                | "definputdevices"
+                | "defgamepad" => Ok(()),
                 _ => err_span!(expr, "Found unknown configuration item"),
             })
             .ok_or_else(|| {
@@ -1188,6 +1236,7 @@ pub struct ParserState {
     /// (via `Cfg::emits_mouse_buttons`) to gate installing the mouse event tap.
     emits_mouse_buttons: Cell<bool>,
     input_devices: Option<Vec<(std::num::NonZeroU8, InputDeviceMatcher)>>,
+    gamepad: Option<crate::gamepad::GamepadConfig>,
     pctx: ParserContext,
     pub lsp_hints: RefCell<LspHints>,
     hand_map: Option<&'static custom_tap_hold::HandMap>,
@@ -1222,6 +1271,7 @@ impl Default for ParserState {
             multi_action_nest_count: Cell::new(0),
             emits_mouse_buttons: Cell::new(false),
             input_devices: None,
+            gamepad: None,
             lsp_hints: Default::default(),
             hand_map: None,
             a: unsafe { Allocations::new() },
@@ -1493,6 +1543,11 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
         _ => {}
     };
     if let Some(oscode) = str_to_oscode(ac) {
+        // Same rule as mvmt: a controller control names a physical input on a
+        // pad, and no OS can be asked to emit one.
+        if oscode.is_gamepad_code() {
+            bail_span!(ac_span, "{ac} can only be used as an input")
+        }
         if matches!(ac, "comp" | "cmp") {
             log::warn!(
                 "comp/cmp/cmps is not actually a compose key even though its correpsonding code is KEY_COMPOSE. Its actual functionality is context menu which somewhat behaves like right-click.\nTo remove this warning, replace this usage with an equivalent key name such as: menu"
@@ -1556,6 +1611,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
     );
     if keys.contains(&KEY_OVERLAP) {
         bail!("O- is only valid in sequences for lists of keys");
+    }
+    if OsCode::from(keys[keys.len() - 1]).is_gamepad_code() {
+        bail_span!(ac_span, "{unparsed_str} can only be used as an input")
     }
     Ok(s.a.sref(Action::MultipleKeyCodes(s.a.sref(s.a.sref_vec(keys)))))
 }

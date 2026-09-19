@@ -8,8 +8,9 @@ use crate::keys::OsCode;
 
 use std::sync::Arc;
 
-// OsCode::KEY_MAX is the biggest OsCode
-pub const KEYS_IN_ROW: usize = OsCode::KEY_MAX as usize;
+// OsCode::OSCODE_MAX is one past the biggest OsCode, including the synthetic
+// gamepad controls that live above the OS scancode range.
+pub const KEYS_IN_ROW: usize = OsCode::OSCODE_MAX as usize;
 pub const LAYER_ROWS: usize = 2;
 pub const DEFAULT_ACTION: KanataAction = KanataAction::KeyCode(KeyCode::ErrorUndefined);
 

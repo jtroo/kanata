@@ -378,6 +378,9 @@ will also work for most keys to tell you the key name.
 It will be shown as the `event.code` field in the web page
 after you press the key.
 
+Game controller inputs have their own names, listed in
+<<defgamepad,Game controllers>>.
+
 [[non-us-keyboards]]
 == Non-US keyboards
 
@@ -4245,6 +4248,332 @@ NOTE: Device IDs are matched at startup. Devices plugged in after kanata
 starts will not be recognized. Live reload does not re-read device mappings.
 
 NOTE: Currently supported on macOS only. Linux support is planned.
+
+[[defgamepad]]
+== Game controllers
+
+Game controllers can be used as input alongside your keyboard. Controller
+controls become ordinary kanata inputs, so everything you already know works
+on them: layers, `tap-hold`, chords, macros, overrides and aliases.
+
+Game controller support is built into kanata. Building on Linux needs the udev
+development headers (`libudev-dev` on Debian and Ubuntu, `systemd-devel` on
+Fedora), because the backend uses `libudev`. Static musl packaging needs a
+distribution-specific answer for that native dependency.
+
+=== A minimal example
+
+Buttons and the d-pad need nothing beyond `defsrc`:
+
+....
+(defsrc pad-south pad-east pad-l1 pad-dpad-up)
+(deflayer base
+  spc
+  esc
+  (layer-while-held nav)
+  up)
+....
+
+Controller names are *positional*, not printed on the pad. `pad-south` is
+always the lower face button, so the same configuration works on a DualSense,
+an Xbox pad and a Switch Pro controller without edits — even though those
+three print `✕`, `A` and `B` on that button. Familiar aliases such as
+`pad-cross` and `pad-a` name the same control and are always accepted: they are
+one control, not three, so there is no vendor or profile setting to get wrong.
+
+=== defgamepad
+
+Sticks, triggers and anything beyond the d-pad's four cardinals need a
+`defgamepad` declaration saying how they project into controls. `defgamepad`
+describes the *hardware*; it never names an output key, so what a projected
+control does stays in your layers where it can differ per layer.
+
+....
+(defgamepad
+  (stick left  (digital (mode 4way) (debounce 8)))
+  (stick right (mouse (deadzone 0.12) (speed 1200)))
+  (dpad        (digital (mode 8way) (socd neutral)))
+  (trigger right (threshold 0.30) (scroll down (speed 30))))
+
+(defsrc pad-lstick-up pad-lstick-down pad-lstick-left pad-lstick-right pad-r2)
+(deflayer base w s a d lsft)
+....
+
+Only one `defgamepad` is allowed, and every item in it is optional.
+
+==== (device N)
+
+Restricts the declaration to one <<definputdevices,`definputdevices`>> entry.
+Without it, every connected controller feeds the same controls, which is what
+a single-controller setup wants. Controllers are matched on `name`,
+`vendor_id` and `product_id`; `hash` is a keyboard-only matcher and is
+reported as unsupported.
+
+....
+(definputdevices
+  1 ((name "DualSense Wireless Controller") (vendor_id 0x054c)))
+(defgamepad (device 1) (stick left (digital)))
+....
+
+With more than one controller connected and no `(device ...)`, controllers
+are merged: a control is pressed while any controller holds it, and released
+when the last one lets go.
+
+[[gamepad-directional]]
+==== (stick left|right ...) and (dpad ...)
+
+The two sticks and the d-pad are the same kind of thing — a control that
+points a direction — so they take the same projections. A d-pad is a stick
+that only knows nine positions.
+
+A control may take more than one projection at a time. A stick can drive the
+pointer, turn the wheel, and press a key at full deflection: each projection
+reads the same value without disturbing the others.
+
+[cols="1,4"]
+|===
+| Projection | Meaning
+
+| `(digital ...)`
+| Threshold crossings press `pad-lstick-*`, `pad-rstick-*` or `pad-dpad-*`.
+  On a d-pad this is the default and needs no declaration.
+
+| `(mouse ...)`
+| The control moves the pointer.
+
+| `(scroll ...)`
+| The control turns the scroll wheel.
+
+| `off`
+| The control does nothing. This is the default for both sticks.
+|===
+
+`digital` takes:
+
+[cols="1,4"]
+|===
+| Option | Meaning
+
+| `(mode 4way)`
+| Default. A diagonal presses two cardinal controls, the way holding two keys
+  does. Use for WASD-style movement.
+
+| `(mode 8way)`
+| A diagonal presses one dedicated control (`pad-lstick-upleft` and friends)
+  instead of its two components. A straight push still presses its cardinal,
+  so all eight directions are usable.
+
+| `(socd ...)`
+| What to do when both directions of an axis are asserted. See
+  <<gamepad-socd,SOCD>>.
+
+| `(threshold 0.50)`
+| Fraction of *physical* deflection at which a direction presses. Nothing else
+  — no deadzone, no curve — can move this point. Not accepted on a d-pad,
+  whose contacts are digital before they reach kanata.
+
+| `(debounce 8)`
+| Require an analog reading to remain on its new side of the threshold for this
+  many milliseconds before pressing or releasing. Default `0` acts
+  immediately. Use this to ignore a noisy threshold crossing; it adds the same
+  delay to both edges. Not accepted on a d-pad.
+|===
+
+A digital projection has no `deadzone`, and does not need one — the
+threshold already is one. `debounce` only decides when a crossing becomes an
+edge; it never shifts that threshold.
+
+`mouse` and `scroll` take:
+
+[cols="1,4"]
+|===
+| Option | Meaning
+
+| `(deadzone 0.15)`
+| Radius below which the control reads as at rest, `0`–`1`. Default `0.15`.
+  Applied radially and rescaled, so the first movement past the edge produces
+  the smallest output rather than jumping, and a stick at a hardware corner is
+  normalised to the rim rather than outrunning a straight push.
+
+| `(speed 1200)`
+| Pixels (or wheel notches) per second at full deflection. Using a real-world
+  rate keeps the setting meaningful even though kanata samples it every 1 ms.
+  Defaults to 1000 for `mouse` and 30 for `scroll`.
+
+| `(curve cubic)`
+| `linear`, `quadratic` or `cubic`. Steeper curves give finer control near
+  center and full speed at the rim. Default `cubic` for mouse, `linear` for
+  scroll.
+
+| `(invert-x yes)` / `(invert-y yes)`
+| Flip an axis. `mouse` inverts Y by default, so pushing the stick away moves
+  the pointer up the screen.
+|===
+
+Fractional movement accumulates between ticks, so a speed slow enough to move
+less than one pixel per tick still moves, and the average rate stays exact.
+
+Pointing a d-pad at `mouse` or `scroll` gives movement at a constant rate,
+since its contacts are always at full deflection.
+
+==== (trigger left|right ...)
+
+`(threshold 0.30)` sets the point at which the trigger presses `pad-l2` /
+`pad-r2`, exactly as it does for a stick. `(debounce 8)` has the same meaning
+there: the trigger must remain across the threshold for eight milliseconds
+before its edge is emitted.
+
+A trigger is a single number rather than a vector, so a continuous projection
+has to be told which way to push:
+
+....
+(defgamepad (trigger right (scroll down (speed 30))))
+....
+
+The direction is `up`, `down`, `left` or `right`, and the options after it are
+the `mouse` / `scroll` options above. The band still applies, so the same
+trigger can press `pad-r2` at the top of its travel and scroll faster the
+harder it is squeezed.
+
+Most controllers report a trigger twice, once as a button and once as an
+analog axis. Both drive the same control and kanata holds it while either says
+so, so a controller that reports only one still works and one that reports
+both does not fire twice. The d-pad is unified the same way, whether the
+hardware reports it as four contacts or as a hat axis.
+
+==== (button-slot N code)
+
+Controllers have paddles, extra hats and vendor buttons that no portable name
+can describe. `pad-button-0` through `pad-button-15` are user-assignable slots
+for them:
+
+....
+(defgamepad (button-slot 0 0x2c0))
+(defsrc pad-button-0)
+(deflayer base f13)
+....
+
+To find the code, run kanata with debug logging and press the control; every
+control kanata cannot name is logged with the number to use here. Codes are
+specific to a device and platform, so a config using them is not portable.
+
+[[gamepad-socd]]
+=== SOCD
+
+A control with independent contacts — a d-pad, or a hitbox-style stick
+replacement — can assert Up and Down at once, and a user can mean it. Games
+generally cannot: an opposed pair reaches them as an impossible chord that
+they read as anything from a dead input to a crash. `(socd ...)` picks what
+kanata does about it:
+
+[cols="1,4"]
+|===
+| Mode | Behaviour
+
+| `off`
+| Default. Both directions reach your layers, because both contacts really
+  are down.
+
+| `neutral`
+| Neither direction survives — the fighting-game convention.
+
+| `last`
+| The most recently pressed direction wins and takes over immediately.
+
+| `first`
+| The direction already held wins; the newcomer waits for it to release.
+
+| `positive`
+| Up and Right always win.
+
+| `negative`
+| Down and Left always win.
+|===
+
+Resolution applies per axis, so a genuine diagonal is never disturbed, and per
+controller — two pads pressing opposite directions is two players, not a
+conflict.
+
+A stick reports each axis as a single signed number, so it can never cross a
+threshold in both directions at once. Kanata rejects `socd` on a stick rather
+than accepting a setting that can never do anything.
+
+=== Controller control names
+
+Buttons, usable in `defsrc` with no `defgamepad`:
+
+[cols="1,3"]
+|===
+| Name | Aliases
+
+| `pad-south` `pad-east` `pad-west` `pad-north`
+| `pad-a` `pad-b` `pad-x` `pad-y`, and `pad-cross` `pad-circle`
+  `pad-square` `pad-triangle`
+
+| `pad-c` `pad-z`
+| extra face buttons on six-button pads
+
+| `pad-l1` `pad-r1`
+| `pad-lb` `pad-rb`
+
+| `pad-l2` `pad-r2`
+| `pad-lt` `pad-rt` — the triggers
+
+| `pad-l3` `pad-r3`
+| `pad-lstick` `pad-rstick` — the stick clicks
+
+| `pad-select` `pad-start` `pad-mode`
+| `pad-share` `pad-view` `pad-back`, `pad-options` `pad-menu`,
+  `pad-guide` `pad-home`
+|===
+
+Directions. Each of `pad-dpad-`, `pad-lstick-` and `pad-rstick-` takes the
+eight suffixes `up` `down` `left` `right` `upleft` `upright` `downleft`
+`downright`. `pad-` , `pad-ls-` and `pad-rs-` are shorter forms of the same
+three prefixes.
+
+[cols="1,3"]
+|===
+| Name | Requires
+
+| `pad-dpad-up` … `pad-dpad-right`
+| nothing; a d-pad is digital by default
+
+| `pad-dpad-upleft` … `pad-dpad-downright`
+| `(dpad (digital (mode 8way)))`
+
+| `pad-lstick-*` / `pad-rstick-*`
+| `(stick left \| right (digital ...))`, and `(mode 8way)` for the diagonals
+
+| `pad-button-0` … `pad-button-15`
+| a matching `(button-slot ...)`. `pb0` … `pb15` are shorter aliases.
+|===
+
+Mapping a projected control without its declaration is a configuration error
+naming the line that would fix it, rather than a controller that silently does
+nothing.
+
+=== Limitations
+
+* *Controllers are not seized.* Games and the desktop still receive the
+  controller's input, so kanata adds to it rather than replacing it. This is
+  usually wanted for a controller, but it does mean kanata cannot suppress
+  the original input the way it does for a grabbed keyboard.
+* *No motion or gyro data.* The controller backend exposes none, so there is
+  no way to project a lean onto a key.
+* *On Windows, only XInput-compatible controllers.* The XInput backend is
+  used rather than Windows.Gaming.Input because WGI only delivers input to
+  the focused window, which a background daemon never has.
+* *Adding controller input to a running instance needs a restart.* This means
+  adding either the first mapped `pad-*` input or a `defgamepad` declaration.
+  Changing an active declaration works on live reload, and removing one stops
+  only the projections that declaration created — in both cases anything the
+  old declaration held is released first. Buttons and the d-pad keep working
+  after a removal, because they never needed a declaration to begin with.
+* *`process-unmapped-keys` never claims controller inputs.* Controller inputs
+  must be named in `defsrc`, the same way mouse buttons are.
+* *Controller controls cannot be used as output.* They name a physical control
+  on a pad, not a scancode any operating system can be asked to emit.
 
 [[optional-defcfg-options]]
 == defcfg options
