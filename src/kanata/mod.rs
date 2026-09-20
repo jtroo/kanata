@@ -846,7 +846,6 @@ impl Kanata {
             let mut edges = Vec::new();
             match (&mut self.gamepad, self.gamepad_config) {
                 (Some(gamepad), config) => {
-                (Some(gamepad), config) => {
                     gamepad.reconfigure(config.unwrap_or_default(), &mut edges)
                 }
                 // Adding controller input to a running instance needs the
