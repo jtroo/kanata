@@ -99,8 +99,9 @@ fn apply_pad_analog(k: &mut Kanata, spec: &str) {
         other => panic!("unknown analog control: {other}\nvalid: left, right, lt, rt"),
     };
 
-    // Created on first use: `Kanata::start_gamepad` is a startup step the sim
-    // does not run, since it would spawn a thread looking for real hardware.
+    // Created on first use: `Kanata::start_gamepad_handling_if_configured` is a
+    // startup step the sim does not run, since it would spawn a thread looking
+    // for real hardware.
     let gamepad = k.gamepad.get_or_insert_with(|| {
         let config = k
             .gamepad_config
