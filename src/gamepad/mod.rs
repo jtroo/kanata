@@ -651,11 +651,13 @@ mod tests {
             MotionKind::Scroll,
             kanata_parser::gamepad::TriggerMotion {
                 direction: kanata_parser::gamepad::Cardinal::Up,
-                motion: Motion {
-                    deadzone: Unit::ZERO,
-                    speed: 10_000.0,
-                    curve: Curve::Linear,
-                    invert: Vec2::KEEP,
+                motion: {
+                    let mut motion = Motion::default_of(MotionKind::Scroll);
+                    motion.set_deadzone(Unit::ZERO);
+                    motion.speed = 10_000.0;
+                    motion.curve = Curve::Linear;
+                    motion.invert = Vec2::KEEP;
+                    motion
                 },
             },
         );

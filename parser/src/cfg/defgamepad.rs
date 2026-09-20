@@ -378,12 +378,10 @@ fn trigger(args: &[SExpr], vars: &HashMap<String, SExpr>) -> Result<Trigger> {
     Ok(trigger)
 }
 
-/// How many axes the control being projected has.
-///
-/// A trigger is a single number that already names the direction it pushes, so
-/// `invert-x` / `invert-y` there would be a second knob for the same thing --
-/// and, since the trigger path never reads `Motion::invert`, one that did
-/// nothing at all.
+/// Identifies the number of axes a control has, to check compatibility with
+/// `invert-x` and `invert-y`. A trigger has one axis; control sticks have two.
+/// A one-axis control is incompatible with the invert options and produces a
+/// configuration error if either is used.
 #[derive(Clone, Copy, PartialEq)]
 enum Axes {
     One,
@@ -396,7 +394,7 @@ fn motion(
     args: &[SExpr],
     vars: &HashMap<String, SExpr>,
 ) -> Result<Motion> {
-    let mut motion = Motion::of(kind);
+    let mut motion = Motion::default_of(kind);
     let mut seen: Vec<String> = Vec::new();
     for arg in args {
         let (keyword, values) = keyed(arg, vars, "a motion option such as (speed 1200)")?;
@@ -422,11 +420,12 @@ fn motion(
         // error about a name that means nothing here.
         let value = value(values, arg, keyword)?;
         match keyword {
-            "deadzone" => motion.deadzone = unit(value, vars, keyword)?,
+            "deadzone" => motion.set_deadzone(unit(value, vars, keyword)?),
             "speed" => motion.speed = number(value, vars, keyword, Motion::MAX_SPEED)?,
             "curve" => motion.curve = one_of(value, vars, "curve", &CURVES)?,
             "invert-x" => motion.invert.x = sign(one_of(value, vars, keyword, &BOOLS)?),
-            _ => motion.invert.y = sign(one_of(value, vars, keyword, &BOOLS)?),
+            "invert-y" => motion.invert.y = sign(one_of(value, vars, keyword, &BOOLS)?),
+            _ => unreachable!("keyword validity checked earlier"),
         }
     }
     Ok(motion)

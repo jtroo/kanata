@@ -773,8 +773,8 @@ pub struct GamepadConfig {
 impl Default for GamepadConfig {
     fn default() -> GamepadConfig {
         let mut directionals = [Projection::OFF; Directional::ALL.len()];
-        // A d-pad needs no declaration: it is digital hardware, and there is
-        // nothing to decide before it can press a key.
+        // A d-pad needs no projection item: it is digital hardware, and there
+        // is nothing to decide before it can press a key.
         directionals[Directional::Dpad as usize].digital = Some(Digital::default());
         GamepadConfig {
             device: None,
@@ -961,7 +961,7 @@ mod tests {
             MotionKind::Scroll,
             TriggerMotion {
                 direction: Cardinal::Down,
-                motion: Motion::SCROLL,
+                motion: Motion::SCROLL_DEFAULT,
             },
         );
         assert!(cfg.drives_motion());

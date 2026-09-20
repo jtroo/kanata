@@ -62,10 +62,7 @@ fn motion(cfg: &GamepadConfig, control: Directional) -> (MotionKind, Motion) {
 #[test]
 fn mapped_pad_input_requires_a_defgamepad_declaration() {
     let message = err("pad-a pad-l2 pad-dpad-up", "");
-    assert!(
-        message.contains("without a defgamepad entry"),
-        "{message}"
-    );
+    assert!(message.contains("without a defgamepad entry"), "{message}");
 
     let keyboard_only = gamepad_of("", "").expect("parses");
     assert_eq!(
@@ -97,10 +94,7 @@ fn a_deflayermap_pad_input_also_needs_the_declaration() {
         Ok(_) => panic!("a deflayermap pad input needs defgamepad"),
         Err(e) => flatten(&e),
     };
-    assert!(
-        message.contains("without a defgamepad entry"),
-        "{message}"
-    );
+    assert!(message.contains("without a defgamepad entry"), "{message}");
 }
 
 #[test]
@@ -124,7 +118,7 @@ fn a_full_declaration_round_trips() {
         (kind, right.speed, right.curve),
         (MotionKind::Mouse, 40.0, Curve::Quadratic)
     );
-    assert_eq!(right.deadzone, Unit::new(0.20));
+    assert_eq!(right.deadzone(), Unit::new(0.20));
     assert_eq!(
         right.invert.y, 1.0,
         "(invert-y no) undoes the mouse default"

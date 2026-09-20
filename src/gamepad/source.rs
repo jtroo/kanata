@@ -517,13 +517,11 @@ mod tests {
             digital: None,
             motions: {
                 let mut motions: kanata_parser::gamepad::Motions<Motion> = Default::default();
-                motions.set(
-                    MotionKind::Mouse,
-                    Motion {
-                        deadzone: Unit::ZERO,
-                        ..Motion::MOUSE
-                    },
-                );
+                motions.set(MotionKind::Mouse, {
+                    let mut motion = Motion::MOUSE_DEFAULT;
+                    motion.set_deadzone(Unit::ZERO);
+                    motion
+                });
                 motions
             },
         };

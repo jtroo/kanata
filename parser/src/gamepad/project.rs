@@ -459,12 +459,12 @@ mod tests {
     }
 
     fn fast(speed: f32) -> Motion {
-        Motion {
-            deadzone: Unit::ZERO,
-            speed: speed * 1000.0,
-            curve: Curve::Linear,
-            invert: Vec2::KEEP,
-        }
+        let mut motion = Motion::default_of(MotionKind::Mouse);
+        motion.set_deadzone(Unit::ZERO);
+        motion.speed = speed * 1000.0;
+        motion.curve = Curve::Linear;
+        motion.invert = Vec2::KEEP;
+        motion
     }
 
     fn lstick(dir: Dir) -> PadCode {

@@ -115,6 +115,14 @@ impl Vec2 {
         self.x == 0.0 && self.y == 0.0
     }
 
+    /// Componentwise (Hadamard) product, used for per-axis inversion.
+    pub fn hadamard_product(self, other: Vec2) -> Vec2 {
+        Vec2 {
+            x: self.x * other.x,
+            y: self.y * other.y,
+        }
+    }
+
     /// Split into whole units, leaving the fraction in place.
     ///
     /// The pointer path carries the remainder between ticks: a stick asking
@@ -164,17 +172,6 @@ impl Mul<f32> for Vec2 {
     }
 }
 
-/// Componentwise, which is what applies per-axis inversion.
-impl Mul<Vec2> for Vec2 {
-    type Output = Vec2;
-    fn mul(self, other: Vec2) -> Vec2 {
-        Vec2 {
-            x: self.x * other.x,
-            y: self.y * other.y,
-        }
-    }
-}
-
 /// The response curve applied to continuous projections.
 ///
 /// Digital thresholds are compared *before* any curve, so changing the curve
@@ -220,7 +217,9 @@ pub struct Motion {
     /// rather than per-axis: an axial deadzone lets a stick held diagonally at
     /// low deflection register on one axis but not the other, which produces
     /// phantom cardinal movement on the way to a diagonal.
-    pub deadzone: Unit,
+    deadzone: f32,
+    /// Cached reciprocal of the usable range beyond the deadzone.
+    deadzone_scale_factor: f32,
     /// Output at full deflection per second: pixels for the pointer, notches
     /// for the wheel. Converted to the engine's 1 ms tick in [`Motion::rate`].
     pub speed: f32,
@@ -233,8 +232,9 @@ impl Motion {
     /// A generous upper bound that still catches an extra zero as a typo.
     pub const MAX_SPEED: f32 = 100_000.0;
 
-    pub const MOUSE: Motion = Motion {
-        deadzone: Unit(0.15),
+    pub const MOUSE_DEFAULT: Motion = Motion {
+        deadzone: 0.15,
+        deadzone_scale_factor: 1.0 / (1.0 - 0.15),
         speed: 1000.0,
         curve: Curve::Cubic,
         // Screen coordinates grow downward while a stick's Y grows upward, so
@@ -243,19 +243,34 @@ impl Motion {
         invert: Vec2 { x: 1.0, y: -1.0 },
     };
 
-    pub const SCROLL: Motion = Motion {
-        deadzone: Unit(0.15),
+    pub const SCROLL_DEFAULT: Motion = Motion {
+        deadzone: 0.15,
+        deadzone_scale_factor: 1.0 / (1.0 - 0.15),
         speed: 30.0,
         curve: Curve::Linear,
         // Stick Y and wheel-up are both up-positive, so no inversion.
         invert: Vec2::KEEP,
     };
 
-    pub const fn of(kind: MotionKind) -> Motion {
+    pub const fn default_of(kind: MotionKind) -> Motion {
         match kind {
-            MotionKind::Mouse => Motion::MOUSE,
-            MotionKind::Scroll => Motion::SCROLL,
+            MotionKind::Mouse => Motion::MOUSE_DEFAULT,
+            MotionKind::Scroll => Motion::SCROLL_DEFAULT,
         }
+    }
+
+    pub fn deadzone(self) -> Unit {
+        if self.deadzone == f32::MAX {
+            Unit::ONE
+        } else {
+            Unit(self.deadzone)
+        }
+    }
+
+    pub fn set_deadzone(&mut self, deadzone: Unit) {
+        let deadzone = deadzone.get();
+        self.deadzone = if deadzone >= 1.0 { f32::MAX } else { deadzone };
+        self.deadzone_scale_factor = 1.0 / (1.0 - deadzone);
     }
 
     /// The output per 1 ms tick a deflection of `magnitude` asks for.
@@ -266,25 +281,28 @@ impl Motion {
     /// Overshoot past the rim clamps, which is also what stops a stick at a
     /// hardware corner from outrunning a straight push.
     pub fn rate(self, magnitude: f32) -> f32 {
-        let dz = self.deadzone.get();
         // Non-finite readings are spelled out rather than left to the
         // comparisons below. A disconnecting controller reports NaN, and an
         // infinite radius would clamp to full deflection and then hit the
         // `rate / radius` division in `displace`, where `inf * 0.0` is NaN.
         // They read as at rest rather than as full deflection because no
         // direction can be recovered from them.
-        if !magnitude.is_finite() || magnitude <= dz || dz >= 1.0 {
+        if !magnitude.is_finite() || magnitude <= self.deadzone {
             return 0.0;
         }
         let speed = match self.speed.is_finite() {
             true => self.speed.clamp(0.0, Motion::MAX_SPEED),
             false => 0.0,
         };
-        self.curve
-            .apply(Unit::new((magnitude - dz) / (1.0 - dz)))
-            .get()
-            * speed
-            / 1000.0
+        // Preserve the EXACT full-deflection endpoint. If we were to multiply by
+        // the cached reciprocal we could round just below one, which makes
+        // an integral rate fumble a whole unit when the accumulator truncates.
+        let normalized = if magnitude >= 1.0 {
+            Unit::ONE
+        } else {
+            Unit::new((magnitude - self.deadzone) * self.deadzone_scale_factor)
+        };
+        self.curve.apply(normalized).get() * speed / 1000.0
     }
 
     /// A two-axis reading as a per-tick displacement.
@@ -298,7 +316,7 @@ impl Motion {
         match rate == 0.0 {
             true => Vec2::ZERO,
             false => {
-                let displaced = raw * (rate / radius) * self.invert;
+                let displaced = (raw * (rate / radius)).hadamard_product(self.invert);
                 Vec2 {
                     x: if displaced.x.is_finite() {
                         displaced.x
@@ -355,12 +373,12 @@ mod tests {
     }
 
     fn plain(speed: f32) -> Motion {
-        Motion {
-            deadzone: Unit::ZERO,
-            speed: speed * 1000.0,
-            curve: Curve::Linear,
-            invert: Vec2::KEEP,
-        }
+        let mut motion = Motion::default_of(MotionKind::Mouse);
+        motion.set_deadzone(Unit::ZERO);
+        motion.speed = speed * 1000.0;
+        motion.curve = Curve::Linear;
+        motion.invert = Vec2::KEEP;
+        motion
     }
 
     #[test]
@@ -380,13 +398,13 @@ mod tests {
         }
         assert_eq!(StickPosition::new(2.0, f32::NAN).vector(), v(1.0, 0.0));
         for bad in [v(f32::NAN, 0.0), v(0.0, f32::NAN), v(f32::NAN, f32::NAN)] {
-            assert_eq!(Motion::MOUSE.displace(bad), Vec2::ZERO, "{bad:?}");
+            assert_eq!(Motion::MOUSE_DEFAULT.displace(bad), Vec2::ZERO, "{bad:?}");
         }
         for bad_speed in [f32::NAN, f32::INFINITY, -1.0] {
             assert_eq!(
                 Motion {
                     speed: bad_speed,
-                    ..Motion::MOUSE
+                    ..Motion::MOUSE_DEFAULT
                 }
                 .displace(v(1.0, 0.0)),
                 Vec2::ZERO
@@ -396,22 +414,20 @@ mod tests {
 
     #[test]
     fn the_deadzone_silences_the_center_without_a_jump_at_its_edge() {
-        let dz = Motion {
-            deadzone: Unit::new(0.15),
-            ..plain(1.0)
-        };
+        let mut dz = plain(1.0);
+        dz.set_deadzone(Unit::new(0.15));
         for inside in [v(0.0, 0.0), v(0.10, 0.0), v(0.10, 0.10), v(-0.14, 0.0)] {
             assert_eq!(dz.displace(inside), Vec2::ZERO, "{inside:?}");
         }
         // Just past the edge is near zero, not near 0.15, and full deflection
         // survives unattenuated.
         assert!(dz.displace(v(0.16, 0.0)).x < 0.02);
+        assert_eq!(dz.rate(1.0), 1.0);
         assert!((dz.displace(v(1.0, 0.0)).x - 1.0).abs() < 1e-6);
         // A deadzone of one silences the control instead of dividing by zero.
-        let all = Motion {
-            deadzone: Unit::ONE,
-            ..plain(1.0)
-        };
+        let mut all = plain(1.0);
+        all.set_deadzone(Unit::ONE);
+        assert_eq!(all.deadzone(), Unit::ONE);
         assert_eq!(all.displace(v(1.0, 1.0)), Vec2::ZERO);
     }
 
@@ -454,14 +470,18 @@ mod tests {
     #[test]
     fn inversion_flips_only_the_requested_axis() {
         assert!(
-            Motion::MOUSE.displace(v(0.0, 1.0)).y < 0.0,
+            Motion::MOUSE_DEFAULT.displace(v(0.0, 1.0)).y < 0.0,
             "push away moves the pointer up the screen"
         );
         assert!(
-            Motion::SCROLL.displace(v(0.0, 1.0)).y > 0.0,
+            Motion::SCROLL_DEFAULT.displace(v(0.0, 1.0)).y > 0.0,
             "push away scrolls up"
         );
-        assert_eq!(Motion::MOUSE.invert.x, 1.0, "x is not flipped by default");
+        assert_eq!(
+            Motion::MOUSE_DEFAULT.invert.x,
+            1.0,
+            "x is not flipped by default"
+        );
     }
 
     #[test]
