@@ -77,7 +77,8 @@ pub(crate) fn parse_unmod(
         // These keys are appended to the output list directly rather than
         // going through an action, so the check `parse_action_atom` makes for
         // every other output position has to be repeated here.
-        if osc.is_gamepad_code() || osc == OsCode::KEY_766 /* mouse mvmt */ {
+        let is_mouse_movement = osc == OsCode::KEY_766;
+        if osc.is_gamepad_code() || is_mouse_movement {
             bail_expr!(param, "{osc} can only be used as an input");
         }
         keys.push(osc.into());
