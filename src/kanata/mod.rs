@@ -2007,22 +2007,24 @@ impl Kanata {
                 },
                 CustomAction::MoveMouse { direction, .. }
                 | CustomAction::MoveMouseAccel { direction, .. } => {
-                    match direction {
-                        MoveDirection::Up | MoveDirection::Down => {
-                            if let Some(move_mouse_state_vertical) = &self.move_mouse_state_vertical
-                                && move_mouse_state_vertical.direction == *direction
-                            {
-                                self.move_mouse_state_vertical = None;
-                            }
-                        }
-                        MoveDirection::Left | MoveDirection::Right => {
-                            if let Some(move_mouse_state_horizontal) =
-                                &self.move_mouse_state_horizontal
-                                && move_mouse_state_horizontal.direction == *direction
-                            {
-                                self.move_mouse_state_horizontal = None;
-                            }
-                        }
+                    // An axis only tracks one movement at a time, so the
+                    // released action is only the owner of that state if the
+                    // directions still match. When it is the owner, another
+                    // movement key on the same axis may still be held (e.g.
+                    // left and right both held and right is released first);
+                    // resume that one instead of stopping the axis, which
+                    // would leave a held key doing nothing until re-pressed.
+                    let is_vertical = is_vertical_move_direction(*direction);
+                    let axis_state = if is_vertical {
+                        &mut self.move_mouse_state_vertical
+                    } else {
+                        &mut self.move_mouse_state_horizontal
+                    };
+                    if axis_state
+                        .as_ref()
+                        .is_some_and(|s| s.direction == *direction)
+                    {
+                        *axis_state = resume_move_mouse_on_axis(&layout.states, is_vertical);
                     }
                     if self.movemouse_smooth_diagonals {
                         self.movemouse_buffer = None
@@ -2671,6 +2673,60 @@ fn is_opposite_move_direction(a: MoveDirection, b: MoveDirection) -> bool {
         (a, b),
         (Up, Down) | (Down, Up) | (Left, Right) | (Right, Left)
     )
+}
+
+/// Builds the movement state to resume on an axis from the most recently
+/// pressed movement action that is still held on it, if there is one. States
+/// are in press order, so the last match is the newest. Acceleration restarts
+/// from the minimum distance: the speed of the movement that just ended must
+/// not carry over into the resumed one.
+fn resume_move_mouse_on_axis<'a>(
+    states: &[State<'a, &'a CustomAction>],
+    is_vertical: bool,
+) -> Option<MoveMouseState> {
+    states.iter().rev().find_map(|state| {
+        let State::Custom { value, .. } = state else {
+            return None;
+        };
+        match **value {
+            CustomAction::MoveMouse {
+                direction,
+                interval,
+                distance,
+            } if is_vertical_move_direction(*direction) == is_vertical => Some(MoveMouseState {
+                direction: *direction,
+                distance: *distance,
+                ticks_until_move: 0,
+                interval: *interval,
+                move_mouse_accel_state: None,
+            }),
+            CustomAction::MoveMouseAccel {
+                direction,
+                interval,
+                accel_time,
+                min_distance,
+                max_distance,
+            } if is_vertical_move_direction(*direction) == is_vertical => Some(MoveMouseState {
+                direction: *direction,
+                distance: *min_distance,
+                ticks_until_move: 0,
+                interval: *interval,
+                move_mouse_accel_state: Some(MoveMouseAccelState {
+                    accel_ticks_from_min: 0,
+                    accel_ticks_until_max: *accel_time,
+                    accel_increment: (f64::from(*max_distance) - f64::from(*min_distance))
+                        / f64::from(*accel_time),
+                    min_distance: *min_distance,
+                    max_distance: *max_distance,
+                }),
+            }),
+            _ => None,
+        }
+    })
+}
+
+fn is_vertical_move_direction(direction: MoveDirection) -> bool {
+    matches!(direction, MoveDirection::Up | MoveDirection::Down)
 }
 
 fn apply_mouse_distance_modifiers(initial_distance: u16, mods: &Vec<u16>) -> u16 {
