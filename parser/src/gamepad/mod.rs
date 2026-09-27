@@ -180,11 +180,12 @@ impl Dir {
 /// Keeping those domains separate prevents an already-projected diagonal from
 /// being fed back into SOCD or four-way projection as if it were raw input.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[repr(u8)]
 pub enum Cardinal {
-    Up,
-    Down,
-    Left,
-    Right,
+    Up = 0b0001,
+    Down = 0b0010,
+    Left = 0b0100,
+    Right = 0b1000,
 }
 
 impl Cardinal {
@@ -242,18 +243,18 @@ impl CardinalSet {
     pub const fn of(dirs: &[Cardinal]) -> CardinalSet {
         let (mut bits, mut i) = (0u8, 0);
         while i < dirs.len() {
-            bits |= 1 << dirs[i] as u8;
+            bits |= dirs[i] as u8;
             i += 1;
         }
         CardinalSet(bits)
     }
 
     pub const fn contains(self, dir: Cardinal) -> bool {
-        self.0 & (1 << dir as u8) != 0
+        self.0 & dir as u8 != 0
     }
 
     pub fn set(&mut self, dir: Cardinal, present: bool) {
-        let bit = 1 << dir as u8;
+        let bit = dir as u8;
         self.0 = if present { self.0 | bit } else { self.0 & !bit };
     }
 
