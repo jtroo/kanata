@@ -577,7 +577,7 @@ fn number(expr: &SExpr, vars: &HashMap<String, SExpr>, what: &str, max: f32) -> 
     Ok(parsed)
 }
 
-/// A value that must land in `[0, 1]`.
+/// A value that must land in `[0.0, 1.0]`.
 ///
 /// Out of range is an error rather than a clamp: at runtime clamping protects
 /// against misbehaving hardware, but in a configuration it is always a typo,

@@ -20,7 +20,7 @@ use super::{
 
 /// One reading from a controller, already normalized by the backend.
 ///
-/// Axis values are y-up and in `[-1, 1]`; trigger values are in `[0, 1]`.
+/// Axis values are y-up and in `[-1.0, 1.0]`; trigger values are in `[0.0, 1.0]`.
 /// Multi-axis controls arrive whole rather than one axis at a time, so a
 /// diagonal push never momentarily looks like a cardinal one.
 #[derive(Clone, Copy, Debug, PartialEq)]

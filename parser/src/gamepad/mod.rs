@@ -301,7 +301,7 @@ impl CardinalSet {
         })
     }
 
-    /// Where this set points, with components in `-1..=1`. A d-pad reads as a
+    /// Where this set points, with components in `[-1.0, 1.0]`. A d-pad reads as a
     /// stick this way, so both drive the same continuous projection.
     pub fn vector(self) -> Vec2 {
         self.iter()
