@@ -150,8 +150,8 @@ impl SocdMemory {
             if !(raw.contains(positive) && raw.contains(negative)) {
                 continue;
             }
-            // With exactly two directions on the axis, the incumbent is
-            // whichever one is not the newcomer.
+            // Both directions are held, so pick one by mode. `Last` keeps
+            // the newer press, `First` the older one.
             let winner = match mode {
                 Socd::Off => continue,
                 Socd::Neutral => None,
