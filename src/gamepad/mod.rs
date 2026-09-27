@@ -68,9 +68,9 @@ pub struct PadEngine {
     /// The union last handed to the layout.
     held: PadSet,
     /// Whether the last sample found the controllers asking for movement.
-    moving: bool,
+    has_movement: bool,
     /// Whether a debounced threshold crossing still needs clock time.
-    pending: bool,
+    is_debounce_pending: bool,
 }
 
 impl PadEngine {
@@ -80,8 +80,8 @@ impl PadEngine {
             matcher,
             pads: HashMap::default(),
             held: PadSet::EMPTY,
-            moving: false,
-            pending: false,
+            has_movement: false,
+            is_debounce_pending: false,
         }
     }
 
@@ -98,8 +98,8 @@ impl PadEngine {
     /// and the next push would never wake the loop.
     pub fn take_motion_start(&mut self) -> bool {
         let moving = !self.demand().is_idle();
-        let started = moving && !self.moving;
-        self.moving = moving;
+        let started = moving && !self.has_movement;
+        self.has_movement = moving;
         started
     }
 
@@ -109,8 +109,8 @@ impl PadEngine {
             .pads
             .values()
             .any(|(projector, _)| projector.has_pending());
-        let started = pending && !self.pending;
-        self.pending = pending;
+        let started = pending && !self.is_debounce_pending;
+        self.is_debounce_pending = pending;
         started
     }
 
@@ -144,7 +144,7 @@ impl PadEngine {
     /// nothing left that could ever release it.
     pub fn disconnect(&mut self, id: PadDeviceId, edges: &mut Vec<PadEdge>) {
         if self.pads.remove(&id).is_some() {
-            self.pending = self
+            self.is_debounce_pending = self
                 .pads
                 .values()
                 .any(|(projector, _)| projector.has_pending());
@@ -166,7 +166,7 @@ impl PadEngine {
         for (projector, _) in self.pads.values_mut() {
             projector.tick(milliseconds);
         }
-        self.pending = self
+        self.is_debounce_pending = self
             .pads
             .values()
             .any(|(projector, _)| projector.has_pending());
@@ -182,8 +182,8 @@ impl PadEngine {
     /// Swap in a new declaration across every connected controller.
     pub fn reconfigure(&mut self, config: GamepadConfig, edges: &mut Vec<PadEdge>) {
         self.config = config;
-        self.moving = false;
-        self.pending = false;
+        self.has_movement = false;
+        self.is_debounce_pending = false;
         for (projector, _) in self.pads.values_mut() {
             projector.reconfigure(config);
         }
@@ -193,8 +193,8 @@ impl PadEngine {
     /// Release every control every controller is holding, keeping the
     /// controllers themselves connected.
     pub fn release_all(&mut self, edges: &mut Vec<PadEdge>) {
-        self.moving = false;
-        self.pending = false;
+        self.has_movement = false;
+        self.is_debounce_pending = false;
         for (projector, _) in self.pads.values_mut() {
             projector.reset();
         }
