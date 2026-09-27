@@ -233,7 +233,7 @@ impl TryFrom<Dir> for Cardinal {
     }
 }
 
-/// A set of raw cardinal assertions from a stick, d-pad, or hat.
+/// A bitset of raw cardinal assertions from a stick, d-pad, or hat.
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct CardinalSet(u8);
 
@@ -510,9 +510,10 @@ pub struct PadEdge {
     pub pressed: bool,
 }
 
-/// The set of controls a controller is holding.
+/// The bitset of controls a controller is holding.
 ///
-/// One `u64`, because the reserved range is deliberately smaller than that.
+/// One `u64`, because the reserved range is deliberately smaller than that in
+/// count of bits.
 /// Holding state, merging several controllers and diffing for edges are then
 /// each a single instruction, and nothing on the event path allocates.
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
