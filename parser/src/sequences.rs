@@ -25,5 +25,12 @@ pub fn mod_mask_for_keycode(kc: KeyCode) -> u16 {
 #[test]
 fn keys_fit_within_mask() {
     use crate::keys::OsCode;
-    assert!(MASK_KEYCODES >= u16::from(OsCode::KEY_MAX));
+    // The mask has to cover the whole `OsCode` range, not just the codes a
+    // sequence can name. A sequence cannot hold a controller control -- the
+    // key list is parsed as actions, and those are rejected in an output
+    // position -- but the mask is applied to raw codes, so it still has to
+    // reach past the reserved range.
+    assert!(MASK_KEYCODES >= u16::from(OsCode::OSCODE_MAX));
+    // And the overlap marker has to stay clear of all of them.
+    const { assert!(KEY_OVERLAP_MARKER > MASK_KEYCODES) };
 }

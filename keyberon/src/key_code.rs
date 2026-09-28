@@ -5,7 +5,7 @@ pub const KEY_MAX: u16 = 850;
 
 #[test]
 fn keycode_max_test() {
-    assert!((KeyCode::KeyMax as u16) < KEY_MAX);
+    assert!((KeyCode::KeyCodeMax as u16) < KEY_MAX);
 }
 
 #[allow(missing_docs)]
@@ -782,6 +782,69 @@ pub enum KeyCode {
     K765 = 765,
     K766 = 766,
     KeyMax = 767,
+
+    // Codes above the OS scancode range. kanata reserves these for inputs no
+    // operating system reports as a scancode -- currently the game controller
+    // controls named in `kanata_parser::keys::OsCode`. `From<OsCode>` and
+    // `From<KeyCode>` transmute between the two enums, so this range has to
+    // cover every `OsCode` discriminant.
+    K768 = 768,
+    K769 = 769,
+    K770 = 770,
+    K771 = 771,
+    K772 = 772,
+    K773 = 773,
+    K774 = 774,
+    K775 = 775,
+    K776 = 776,
+    K777 = 777,
+    K778 = 778,
+    K779 = 779,
+    K780 = 780,
+    K781 = 781,
+    K782 = 782,
+    K783 = 783,
+    K784 = 784,
+    K785 = 785,
+    K786 = 786,
+    K787 = 787,
+    K788 = 788,
+    K789 = 789,
+    K790 = 790,
+    K791 = 791,
+    K792 = 792,
+    K793 = 793,
+    K794 = 794,
+    K795 = 795,
+    K796 = 796,
+    K797 = 797,
+    K798 = 798,
+    K799 = 799,
+    K800 = 800,
+    K801 = 801,
+    K802 = 802,
+    K803 = 803,
+    K804 = 804,
+    K805 = 805,
+    K806 = 806,
+    K807 = 807,
+    K808 = 808,
+    K809 = 809,
+    K810 = 810,
+    K811 = 811,
+    K812 = 812,
+    K813 = 813,
+    K814 = 814,
+    K815 = 815,
+    K816 = 816,
+    K817 = 817,
+    K818 = 818,
+    K819 = 819,
+    K820 = 820,
+    K821 = 821,
+    K822 = 822,
+    /// One past the highest variant.
+    KeyCodeMax = 823,
 }
 
 impl KeyCode {

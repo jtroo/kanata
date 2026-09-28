@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+pub mod gamepad;
 #[cfg(all(target_os = "windows", feature = "gui"))]
 pub mod gui;
 pub mod kanata;
