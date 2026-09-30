@@ -4160,6 +4160,49 @@ See a sample below that showcases a reusable template.
 )
 ----
 
+This still does not preemptively enable the chords of any action's
+conditional target layer.
+
+For example: if a chord is disabled in your current layer but enabled in a
+`tap-hold-press` target layer, holding that `tap-hold-press` key does
+not allow your chord to activate unless the layer changes first.
+
+As a workaround, you may define an intermediate layer in which the chord
+is not disabled and activate that layer at the same time as your `tap-hold-press`.
+
+.Example:
+[source]
+----
+(defcfg concurrent-tap-hold yes)
+(defsrc)
+
+(deftemplate v- (key)
+  (defvirtualkeys (concat v- $key) $key)
+  (defalias (concat v- $key)
+    (multi (on-press press-vkey (concat v- $key)) (on-release release-vkey (concat v- $key))))
+)
+
+(deflayermap (base)
+  caps (multi
+         (layer-while-held chords-allowed)
+         (tap-hold-press 150 150 bspc (layer-while-held navigation))
+       )
+)
+
+(deflayermap (navigation)
+	h left j down k up l right
+)
+
+(deflayermap (chords-allowed)
+	;; a blank deflayermap leaves all items transparent, matching your current layer
+)
+
+(t! v- esc)
+(defchordsv2
+	(j k) @v-esc 50 first-release (base) ;; disabled on base layer
+)
+----
+
 [[definputdevices]]
 == definputdevices
 
