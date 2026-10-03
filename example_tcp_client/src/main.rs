@@ -66,6 +66,9 @@ fn print_usage() {
     - reload specific index: {}\n\
     - reload specific file: {}
 \n\
+    Type `subscribe-physical` to receive original physical key events.\n\
+    Type `unsubscribe-physical` to stop receiving them.
+\n\
     Server responses for commands look like:\n\
     - Success: {}\n\
     - Error: {}
@@ -159,6 +162,14 @@ fn write_to_kanata(mut s: TcpStream) {
                 action: FakeKeyActionMessage::Tap,
             })
             .expect("deserializable")
+        } else if command == "subscribe-physical" {
+            log::info!("writer: subscribing to physical key events");
+            serde_json::to_string(&ClientMessage::SubscribePhysicalKeyEvents { enabled: true })
+                .expect("deserializable")
+        } else if command == "unsubscribe-physical" {
+            log::info!("writer: unsubscribing from physical key events");
+            serde_json::to_string(&ClientMessage::SubscribePhysicalKeyEvents { enabled: false })
+                .expect("deserializable")
         } else if command == "reload" {
             log::info!("writer: telling kanata to reload current config");
             serde_json::to_string(&ClientMessage::Reload {
@@ -250,6 +261,9 @@ fn read_from_kanata(s: TcpStream) {
         match parsed_msg {
             ServerMessage::LayerChange { new } => {
                 log::info!("reader: kanata changed layers to \"{new}\"");
+            }
+            ServerMessage::PhysicalKey { key, code, state } => {
+                log::info!("physical key: {key} ({code}) {state:?}");
             }
             msg => {
                 log::info!("got msg: {msg:?}");
