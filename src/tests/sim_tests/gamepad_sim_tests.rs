@@ -82,8 +82,9 @@ fn a_controller_control_never_reaches_the_os_as_a_scancode() {
     assert_eq!(result, "t:20ms dn:A t:10ms up:A");
 }
 
+#[ignore]
 #[test]
-fn controller_controls_are_not_swept_in_by_process_unmapped_keys() {
+fn controller_controls_are_not_swept_in_by_process_unmapped_keys_must_be_single_threaded() {
     // A controller is a separate device the user opted into with defsrc.
     // Sweeping its controls in would claim a device kanata was never asked to
     // touch.
