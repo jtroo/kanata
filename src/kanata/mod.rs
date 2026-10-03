@@ -3080,7 +3080,9 @@ pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
         }
         FakeKeyAction::Release => layout.event(Event::Release(x, y)),
         FakeKeyAction::Tap => {
-            layout.event(Event::Press(x, y));
+            if !states_has_coord(&layout.states, x, y) {
+                layout.event(Event::Press(x, y));
+            }
             layout.event(Event::Release(x, y));
         }
         FakeKeyAction::Toggle => {
