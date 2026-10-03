@@ -355,7 +355,8 @@ pub type MappedKeys = HashSet<OsCode>;
 pub struct LayerInfo {
     pub name: String,
     pub cfg_text: String,
-    pub icon: Option<String>,
+    pub icon:  Option<String>,
+    pub color: Option<String>,
 }
 
 #[allow(clippy::type_complexity)] // return type is not pub
@@ -728,7 +729,7 @@ pub fn parse_cfg_raw_string(
         bail!("No deflayer expressions exist. At least one layer must be defined.")
     }
 
-    let (layer_idxs, layer_icons) =
+    let (layer_idxs, layer_icons, layer_colors) =
         parse_layer_indexes(&layer_exprs, mapping_order.len(), &vars, &mut lsp_hints)?;
     let mut sorted_idxs: Vec<(&String, &usize)> =
         layer_idxs.iter().map(|tuple| (tuple.0, tuple.1)).collect();
@@ -753,9 +754,10 @@ pub fn parse_cfg_raw_string(
         .into_iter()
         .zip(layer_strings)
         .map(|(name, cfg_text)| LayerInfo {
-            name: name.clone(),
+            name:  name.clone(),
             cfg_text,
-            icon: layer_icons.get(&name).unwrap_or(&None).clone(),
+            icon:  layer_icons.get(&name).unwrap_or(&None).clone(),
+            color: layer_colors.get(&name).unwrap_or(&None).clone(),
         })
         .collect();
 
