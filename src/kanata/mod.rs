@@ -3073,7 +3073,11 @@ pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
     T: 'a + std::fmt::Debug + Copy,
 {
     match action {
-        FakeKeyAction::Press => layout.event(Event::Press(x, y)),
+        FakeKeyAction::Press => {
+            if !states_has_coord(&layout.states, x, y) {
+                layout.event(Event::Press(x, y))
+            }
+        }
         FakeKeyAction::Release => layout.event(Event::Release(x, y)),
         FakeKeyAction::Tap => {
             layout.event(Event::Press(x, y));
