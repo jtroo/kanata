@@ -277,6 +277,8 @@ pub struct Kanata {
     intercept_kb_hwids_exclude: Option<Vec<[u8; HWID_ARR_SZ]>>,
     /// User configuration to do logging of layer changes or not.
     log_layer_changes: bool,
+    /// When `true`, `log_layer_changes` prints only the *name* of the layer to the log. When `false`, the entire layer definition is printed.
+    log_layer_changes_name_only: bool,
     /// Tracks the caps-word state. Is Some(...) if caps-word is active and None otherwise.
     pub caps_word: Option<CapsWordState>,
     /// Config items from `defcfg`.
@@ -543,6 +545,7 @@ impl Kanata {
             dynamic_macros: Default::default(),
             log_layer_changes: get_forced_log_layer_changes()
                 .unwrap_or(cfg.options.log_layer_changes),
+            log_layer_changes_name_only: cfg.options.log_layer_changes_name_only,
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
             override_release_on_activation: cfg.options.override_release_on_activation,
@@ -704,6 +707,7 @@ impl Kanata {
             dynamic_macros: Default::default(),
             log_layer_changes: get_forced_log_layer_changes()
                 .unwrap_or(cfg.options.log_layer_changes),
+            log_layer_changes_name_only: cfg.options.log_layer_changes_name_only,
             caps_word: None,
             movemouse_smooth_diagonals: cfg.options.movemouse_smooth_diagonals,
             override_release_on_activation: cfg.options.override_release_on_activation,
@@ -2376,7 +2380,12 @@ impl Kanata {
     }
 
     fn print_layer(&self, layer: usize) {
-        if self.log_layer_changes {
+        if !self.log_layer_changes {
+            return;
+        }
+        if self.log_layer_changes_name_only {
+            log::info!("Entered layer: {}", self.layer_info[layer].name);
+        } else {
             log::info!("Entered layer:\n\n{}", self.layer_info[layer].cfg_text);
         }
     }

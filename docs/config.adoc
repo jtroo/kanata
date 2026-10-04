@@ -4744,6 +4744,22 @@ while keeping the default behaviour as "no logging" to save on processing,
 so that the `defcfg` item does not need to be adjusted back and forth
 when experimenting vs. stable usage.
 
+[[log-layer-changes-name-only]]
+=== log-layer-changes-name-only
+
+By default, the **entire definition** of the layer will be printed to the log. Use this option to only print the **name** of the layer instead.
+
+The default is useful if your config consists mostly of `deflayer`s, as each layer definition can usually be cleanly displayed on a single screen.
+`deflayermap`s tend to be much taller, so if your config mostly consists of those, you may not want them to bloat up your log output.
+
+.Example:
+[source]
+----
+(defcfg
+  log-layer-changes-name-only yes
+)
+----
+
 [[delegate-to-first-layer]]
 === delegate-to-first-layer
 
@@ -5763,6 +5779,7 @@ a non-applicable operating system.
   sequence-input-mode visible-backspaced
   sequence-backtrack-modcancel no
   log-layer-changes no
+  log-layer-changes-name-only no
   delegate-to-first-layer yes
   movemouse-inherit-accel-state yes
   movemouse-smooth-diagonals yes
