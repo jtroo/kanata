@@ -307,6 +307,8 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; By default (no), the entire definition of the layer is printed to the log.
   ;; When set to `yes`, only the *name* of the layer is printed, instead.
   ;; This option doesn't do anything if `log-layer-changes no`.
+  ;; However, *will* be recognized if you pass the `--log-layer-changes` cli flag.
+  ;; (as doing so effectively sets `log-layer-changes` to yes)
   ;; log-layer-changes-name-only yes
 
   ;; This configuration will press and then immediately release the non-modifier key

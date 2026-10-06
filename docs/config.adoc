@@ -4747,10 +4747,15 @@ when experimenting vs. stable usage.
 [[log-layer-changes-name-only]]
 === log-layer-changes-name-only
 
-By default, the **entire definition** of the layer will be printed to the log. Use this option to only print the **name** of the layer instead.
+By default (disabled), the **entire definition** of the layer will be printed to the log.
+Enable this option to only print the **name** of the layer instead.
 
 The default is useful if your config consists mostly of `deflayer`s, as each layer definition can usually be cleanly displayed on a single screen.
-`deflayermap`s tend to be much taller, so if your config mostly consists of those, you may not want them to bloat up your log output.
+Layers defined with `deflayermap` tend to be much taller, so if your config mostly consists of those, you may not want them to bloat up your log output, and prefer to only see the layer name instead of its full definition.
+
+The `+--log-layer-changes+` command line argument overrides `log-layer-changes` (whether layers are printed) but doesn't touch `log-layer-changes-name-only` (how layers are printed).
+So, you could for example enable `log-layer-changes-name-only` but disable `log-layer-changes` in your config.
+Then, whenever you would use `+--log-layer-changes+`, each layer would be printed with only its name.
 
 .Example:
 [source]
