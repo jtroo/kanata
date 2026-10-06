@@ -517,7 +517,7 @@ keyboard tester in the kanata repository will give the correct number
 in the `code: <number>` section.
 (https://github.com/jtroo/kanata/releases/tag/win-keycode-tester-v0.3.0[prebuilt binary])
 
-In Windows uning `winIOv2`, the winIOv2 executable variant
+In Windows using `winIOv2`, the winIOv2 executable variant
 will give the correct number in the `code: <number>` section.
 
 In Windows using Interception, the interception version of the keyboard tester
