@@ -1709,42 +1709,19 @@ impl Kanata {
                         interval,
                         distance,
                         inertial_scroll_params,
-                    } => match direction {
-                        MWheelDirection::Up | MWheelDirection::Down => {
-                            self.scroll_state = Some(ScrollState {
-                                direction: *direction,
-                                distance: *distance,
-                                ticks_until_scroll: 0,
-                                interval: *interval,
-                                scroll_accel_state: inertial_scroll_params.as_ref().map(|isp|
-                                    ScrollAccelState {
-                                        deceleration_multiplier: isp.deceleration_multiplier.0,
-                                        acceleration_multiplier: isp.acceleration_multiplier.0,
-                                        max_velocity: isp.maximum_velocity.0,
-                                        current_velocity: isp.initial_velocity.0,
-                                        scroll_released: false,
-                                    }
-                                ),
-                            })
+                    } => {
+                        let state = new_scroll_state(
+                            *direction,
+                            *interval,
+                            *distance,
+                            *inertial_scroll_params,
+                        );
+                        if is_vertical_scroll_direction(*direction) {
+                            self.scroll_state = Some(state);
+                        } else {
+                            self.hscroll_state = Some(state);
                         }
-                        MWheelDirection::Left | MWheelDirection::Right => {
-                            self.hscroll_state = Some(ScrollState {
-                                direction: *direction,
-                                distance: *distance,
-                                ticks_until_scroll: 0,
-                                interval: *interval,
-                                scroll_accel_state: inertial_scroll_params.as_ref().map(|isp|
-                                    ScrollAccelState {
-                                        deceleration_multiplier: isp.deceleration_multiplier.0,
-                                        acceleration_multiplier: isp.acceleration_multiplier.0,
-                                        max_velocity: isp.maximum_velocity.0,
-                                        current_velocity: isp.initial_velocity.0,
-                                        scroll_released: false,
-                                    }
-                                ),
-                            })
-                        }
-                    },
+                    }
                     CustomAction::MWheelNotch { direction } => {
                         self.kbd_out
                             .scroll(*direction, HI_RES_SCROLL_UNITS_IN_LO_RES)?;
@@ -2137,28 +2114,35 @@ impl Kanata {
                 CustomAction::Mouse(btn) => {
                     self.kbd_out.release_btn(*btn)?;
                 }
-                CustomAction::MWheel { direction, .. } => match direction {
-                    MWheelDirection::Up | MWheelDirection::Down => {
-                        if let Some(ss) = &mut self.scroll_state
-                            && ss.direction == *direction
-                        {
-                            ss.distance = 0;
-                            if let Some(acs) = &mut ss.scroll_accel_state {
-                                acs.scroll_released = true
+                CustomAction::MWheel { direction, .. } => {
+                    // As with movement, an axis only tracks one scroll at a
+                    // time, so the released action owns that state only while
+                    // the directions match. Another scroll key on the axis may
+                    // still be held (e.g. up and down both held and down is
+                    // released first); resume that one rather than stopping the
+                    // axis and leaving a held key doing nothing. With nothing
+                    // left holding it, stop as before, which lets an inertial
+                    // scroll decelerate instead of cutting out.
+                    let is_vertical = is_vertical_scroll_direction(*direction);
+                    let axis_state = if is_vertical {
+                        &mut self.scroll_state
+                    } else {
+                        &mut self.hscroll_state
+                    };
+                    if let Some(ss) = axis_state
+                        && ss.direction == *direction
+                    {
+                        match resume_scroll_on_axis(&layout.states, is_vertical) {
+                            Some(resumed) => *ss = resumed,
+                            None => {
+                                ss.distance = 0;
+                                if let Some(acs) = &mut ss.scroll_accel_state {
+                                    acs.scroll_released = true
+                                }
                             }
                         }
                     }
-                    MWheelDirection::Left | MWheelDirection::Right => {
-                        if let Some(ss) = &mut self.hscroll_state
-                            && ss.direction == *direction
-                        {
-                            ss.distance = 0;
-                            if let Some(acs) = &mut ss.scroll_accel_state {
-                                acs.scroll_released = true
-                            }
-                        }
-                    }
-                },
+                }
                 CustomAction::MoveMouse { direction, .. }
                 | CustomAction::MoveMouseAccel { direction, .. } => {
                     // An axis only tracks one movement at a time, so the
@@ -2885,6 +2869,59 @@ fn resume_move_mouse_on_axis<'a>(
             _ => None,
         }
     })
+}
+
+/// Builds the scroll state to resume on an axis from the most recently pressed
+/// scroll action that is still held on it, if there is one. States are in press
+/// order, so the last match is the newest.
+fn resume_scroll_on_axis<'a>(
+    states: &[State<'a, &'a CustomAction>],
+    is_vertical: bool,
+) -> Option<ScrollState> {
+    states.iter().rev().find_map(|state| {
+        let State::Custom { value, .. } = state else {
+            return None;
+        };
+        match **value {
+            CustomAction::MWheel {
+                direction,
+                interval,
+                distance,
+                inertial_scroll_params,
+            } if is_vertical_scroll_direction(*direction) == is_vertical => Some(new_scroll_state(
+                *direction,
+                *interval,
+                *distance,
+                *inertial_scroll_params,
+            )),
+            _ => None,
+        }
+    })
+}
+
+fn new_scroll_state(
+    direction: MWheelDirection,
+    interval: u16,
+    distance: u16,
+    inertial_scroll_params: Option<&'static MWheelInertial>,
+) -> ScrollState {
+    ScrollState {
+        direction,
+        distance,
+        ticks_until_scroll: 0,
+        interval,
+        scroll_accel_state: inertial_scroll_params.map(|isp| ScrollAccelState {
+            deceleration_multiplier: isp.deceleration_multiplier.0,
+            acceleration_multiplier: isp.acceleration_multiplier.0,
+            max_velocity: isp.maximum_velocity.0,
+            current_velocity: isp.initial_velocity.0,
+            scroll_released: false,
+        }),
+    }
+}
+
+fn is_vertical_scroll_direction(direction: MWheelDirection) -> bool {
+    matches!(direction, MWheelDirection::Up | MWheelDirection::Down)
 }
 
 fn is_vertical_move_direction(direction: MoveDirection) -> bool {

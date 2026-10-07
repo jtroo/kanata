@@ -182,3 +182,59 @@ fn movemouse_release_leaves_the_other_axis_alone() {
         result
     );
 }
+
+#[test]
+fn mwheel_release_resumes_other_held_direction() {
+    // An axis tracks one scroll at a time, so releasing the key that owns that
+    // state used to stop the axis outright even when another scroll key on it
+    // was still held, leaving the held key doing nothing until it was
+    // re-pressed. The still-held scroll has to be resumed instead.
+
+    // Reversed direction: up is held, down takes the axis over, and releasing
+    // down goes back to scrolling up.
+    let result = simulate(
+        "(defsrc a b)
+         (deflayermap (base)
+           a (mwheel-up 2 10)
+           b (mwheel-down 2 20))",
+        "d:a t:5 d:b t:5 u:b t:6 u:a t:3",
+    )
+    .to_ascii();
+    assert_eq!(
+        "scroll:Up,10 t:2ms scroll:Up,10 t:2ms scroll:Up,10 t:1ms scroll:Down,20 t:2ms scroll:Down,20 t:2ms scroll:Down,20 t:1ms scroll:Up,10 t:2ms scroll:Up,10 t:2ms scroll:Up,10",
+        result
+    );
+
+    // Same direction at a different distance: the slower scroll is still held
+    // underneath the faster one and resumes at its own distance.
+    let result = simulate(
+        "(defsrc a c)
+         (deflayermap (base)
+           a (mwheel-up 2 10)
+           c (mwheel-up 2 30))",
+        "d:a t:5 d:c t:5 u:c t:6 u:a t:3",
+    )
+    .to_ascii();
+    assert_eq!(
+        "scroll:Up,10 t:2ms scroll:Up,10 t:2ms scroll:Up,10 t:1ms scroll:Up,30 t:2ms scroll:Up,30 t:2ms scroll:Up,30 t:1ms scroll:Up,10 t:2ms scroll:Up,10 t:2ms scroll:Up,10",
+        result
+    );
+}
+
+#[test]
+fn mwheel_release_leaves_the_other_axis_alone() {
+    // Resuming is per axis: releasing a horizontal scroll must not pick up a
+    // still-held vertical one, and must not disturb it either.
+    let result = simulate(
+        "(defsrc a b)
+         (deflayermap (base)
+           a (mwheel-up 2 10)
+           b (mwheel-right 2 20))",
+        "d:a t:4 d:b t:4 u:b t:4 u:a t:3",
+    )
+    .to_ascii();
+    assert_eq!(
+        "scroll:Up,10 t:2ms scroll:Up,10 t:2ms scroll:Up,10 scroll:Right,20 t:2ms scroll:Up,10 scroll:Right,20 t:2ms scroll:Up,10 t:2ms scroll:Up,10",
+        result
+    );
+}
