@@ -1565,6 +1565,7 @@ fn parse_all_defcfg() {
   sequence-input-mode visible-backspaced
   sequence-backtrack-modcancel no
   log-layer-changes no
+  log-layer-changes-name-only no
   delegate-to-first-layer yes
   movemouse-inherit-accel-state yes
   movemouse-smooth-diagonals yes

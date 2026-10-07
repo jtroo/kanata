@@ -146,6 +146,7 @@ pub struct CfgOptions {
     pub sequence_backtrack_modcancel: bool,
     pub sequence_always_on: bool,
     pub log_layer_changes: bool,
+    pub log_layer_changes_name_only: bool,
     pub delegate_to_first_layer: bool,
     pub movemouse_inherit_accel_state: bool,
     pub movemouse_smooth_diagonals: bool,
@@ -194,6 +195,7 @@ impl Default for CfgOptions {
             sequence_backtrack_modcancel: true,
             sequence_always_on: false,
             log_layer_changes: true,
+            log_layer_changes_name_only: false,
             delegate_to_first_layer: false,
             movemouse_inherit_accel_state: false,
             movemouse_smooth_diagonals: false,
@@ -868,6 +870,9 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "log-layer-changes" => {
                         cfg.log_layer_changes = parse_defcfg_val_bool(val, label)?
+                    }
+                    "log-layer-changes-name-only" => {
+                        cfg.log_layer_changes_name_only = parse_defcfg_val_bool(val, label)?
                     }
                     "delegate-to-first-layer" => {
                         cfg.delegate_to_first_layer = parse_defcfg_val_bool(val, label)?;
