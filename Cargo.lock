@@ -769,7 +769,7 @@ dependencies = [
 
 [[package]]
 name = "kanata"
-version = "1.13.0-prerelease-1"
+version = "1.13.0-prerelease-2"
 dependencies = [
  "anyhow",
  "arboard",
@@ -1727,9 +1727,9 @@ checksum = "b7c388c1b5e93756d0c740965c41e8822f866621d41acbdf6336a6a168f8840c"
 
 [[package]]
 name = "spin"
-version = "0.9.8"
+version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
+checksum = "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
 dependencies = [
  "lock_api",
 ]
