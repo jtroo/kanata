@@ -15,6 +15,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "persist-cross-job-linux-x64"
+      - name: Install libudev
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
       - name: Do the stuff on x64 ubuntu linux
         shell: bash
         run: |
