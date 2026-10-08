@@ -5527,34 +5527,6 @@ and any <<deflayermap,`deflayermap`>> `$input` position.
 )
 ----
 
-[[windows-only-windows-sync-keystates]]
-=== Windows only: windows-sync-keystates
-
-By default Kanata on Windows without Interception
-has behaviour to check against the Windows operating system
-and try to synchronize known keys where they differ
-between the OS and Kanata.
-This is because of limitations in the Windows keyboard APIs
-where Kanata is not guaranteed to see all events.
-However, likewise due to limitations in the APIs,
-even this sync mechanism is not perfect.
-If the sync behaviour is causing issues, set it to `none`.
-The default is `clear-kanata-states`.
-
-Options:
-
-* `none`
-* `clear-kanata-states`
-* `clear-kanata-and-os-states`
-
-.Example:
-[source]
-----
-(defcfg
-  windows-sync-keystates none
-)
-----
-
 For more context, see: https://github.com/jtroo/kanata/issues/55.
 
 NOTE: Even with these workarounds, putting `+lctl+` and `+ralt+` in your defsrc may not
@@ -5568,6 +5540,43 @@ PowerToys Keyboard Manager or AutoHotKey (AHK),
 you can still experience issues.
 PowerToys has no workaround while with AHK
 you may be able to script your own workaround.
+
+[[windows-only-windows-sync-keystates]]
+=== Windows only: windows-sync-keystates
+
+By default Kanata on Windows without Interception
+has behaviour to check against the Windows operating system
+and try to synchronize known keys where they differ
+between the OS and Kanata.
+This is because of limitations in the Windows keyboard APIs
+where Kanata is not guaranteed to see all events.
+However, likewise due to limitations in the APIs,
+even this sync mechanism is not perfect.
+If the sync behaviour is causing issues, set it to `none`.
+
+You can suspect that issues are happening
+if you see the below message in the Kanata logs:
+
+[source]
+----
+Unexpected keycode is pressed in kanata but not in Windows. Clearing kanata states: SOME_KEY
+----
+
+Options:
+
+* `none`
+* `clear-kanata-states`
+* `clear-kanata-and-os-states`
+
+The default is `clear-kanata-states`.
+
+.Example:
+[source]
+----
+(defcfg
+  windows-sync-keystates none
+)
+----
 
 === Windows only: windows-interception-mouse-hwid[[windows-only-windows-interception-mouse-hwid]]
 
