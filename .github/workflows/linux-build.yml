@@ -31,3 +31,27 @@ jobs:
           path: |
             artifacts-x64/kanata_linux_x64
             artifacts-x64/kanata_linux_cmd_allowed_x64
+            
+  build-linux-arm64:
+    runs-on: ubuntu-26.04-arm
+    steps:
+      - uses: actions/checkout@v6
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "persist-cross-job-linux-arm64"
+      - name: Install libudev
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev
+      - name: Do the stuff on arm64 ubuntu linux
+        shell: bash
+        run: |
+          mkdir -p artifacts-arm64
+          cargo build --release
+          mv target/release/kanata artifacts-arm64/kanata_linux_arm64
+          cargo build --release --features cmd
+          mv target/release/kanata artifacts-arm64/kanata_linux_cmd_allowed_arm64
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux-binaries-arm64
+          path: |
+            artifacts-arm64/kanata_linux_arm64
+            artifacts-arm64/kanata_linux_cmd_allowed_arm64
