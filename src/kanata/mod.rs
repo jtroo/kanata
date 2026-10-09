@@ -930,8 +930,10 @@ impl Kanata {
 
         #[cfg(feature = "tcp_server")]
         if let Some(tx) = _tx {
-            let new = self.layer_info[cur_layer].name.clone();
-            match tx.try_send(ServerMessage::LayerChange { new }) {
+            let new   = self.layer_info[cur_layer].name.clone();
+            let color = self.layer_info[cur_layer].color.clone();
+            let icon  = self.layer_info[cur_layer].icon.clone();
+            match tx.try_send(ServerMessage::LayerChange { new, color, icon }) {
                 Ok(_) => {}
                 Err(error) => {
                     log::error!("could not send LayerChange event notification: {}", error);
@@ -2345,13 +2347,15 @@ impl Kanata {
     fn check_handle_layer_change(&mut self, tx: &Option<Sender<ServerMessage>>) {
         let cur_layer = self.layout.bm().current_layer();
         if cur_layer != self.prev_layer {
-            let new = self.layer_info[cur_layer].name.clone();
+            let new   = self.layer_info[cur_layer].name.clone();
+            let color = self.layer_info[cur_layer].color.clone();
+            let icon  = self.layer_info[cur_layer].icon.clone();
             self.prev_layer = cur_layer;
             self.print_layer(cur_layer);
 
             #[cfg(feature = "tcp_server")]
             if let Some(tx) = tx {
-                match tx.try_send(ServerMessage::LayerChange { new }) {
+                match tx.try_send(ServerMessage::LayerChange { new, color, icon }) {
                     Ok(_) => {}
                     Err(error) => {
                         log::error!("could not send event notification: {}", error);
