@@ -118,3 +118,26 @@ fn definputdevices_accepts_variables() {
     .to_ascii();
     assert_eq!("dn:A t:10ms up:A", result);
 }
+
+#[test]
+fn switch_input_does_not_match_released_oneshot() {
+    let result = simulate(
+        "
+        (defsrc a b c)
+        (deflayer l
+          (one-shot 200 nop0)
+          (switch
+            ((input real a)) b break
+            ((input real c)) d break
+            () c break
+          )
+          (one-shot 200 (layer-while-held l2))
+        )
+        (deflayermap l2)
+        ",
+        "d:a t:50 u:a t:50 d:b t:50 u:b t:50 \n\
+         d:c t:50 u:c t:50 d:b t:50 u:b t:50",
+    )
+    .to_ascii();
+    assert_eq!("t:100ms dn:C t:50ms up:C t:150ms dn:C t:50ms up:C", result);
+}

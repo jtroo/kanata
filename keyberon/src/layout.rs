@@ -287,6 +287,7 @@ pub struct NormalKeyFlags(pub u8);
 
 pub const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION: u8 = 0x01;
 pub const NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE: u8 = 0x02;
+pub const NORMAL_KEY_FLAG_IS_ONESHOT: u8 = 0x04;
 
 impl NormalKeyFlags {
     pub fn nkf_clear_on_next_action(self) -> bool {
@@ -294,6 +295,27 @@ impl NormalKeyFlags {
     }
     pub fn nkf_clear_on_next_release(self) -> bool {
         (self.0 & NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE) == NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE
+    }
+    pub fn nkf_is_oneshot(self) -> bool {
+        self.0 & NORMAL_KEY_FLAG_IS_ONESHOT == NORMAL_KEY_FLAG_IS_ONESHOT
+    }
+}
+
+/// Metadata about LayerModifier flags.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct LayerModifierFlags(pub u8);
+
+pub const LAYER_MODIFIER_FLAG_IS_ONESHOT: u8 = 0x01;
+
+impl LayerModifierFlags {
+    pub fn lmf_oneshot_flag(is_oneshot: bool) -> Self {
+        Self(match is_oneshot {
+            false => 0,
+            true => LAYER_MODIFIER_FLAG_IS_ONESHOT,
+        })
+    }
+    pub fn lmf_is_oneshot(self) -> bool {
+        self.0 & LAYER_MODIFIER_FLAG_IS_ONESHOT == LAYER_MODIFIER_FLAG_IS_ONESHOT
     }
 }
 
@@ -307,6 +329,7 @@ pub enum State<'a, T: 'a> {
     LayerModifier {
         value: usize,
         coord: KCoord,
+        flags: LayerModifierFlags,
     },
     Custom {
         value: &'a T,
@@ -432,6 +455,13 @@ impl<'a, T: 'a> State<'a, T> {
                 (flags.0 & NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE)
                     == NORMAL_KEY_FLAG_CLEAR_ON_NEXT_RELEASE
             }
+            _ => false,
+        }
+    }
+    pub fn is_oneshot(&self) -> bool {
+        match self {
+            NormalKey { flags, .. } => flags.nkf_is_oneshot(),
+            LayerModifier { flags, .. } => flags.lmf_is_oneshot(),
             _ => false,
         }
     }
@@ -1153,6 +1183,10 @@ impl OneShotState {
             self.state_to_retain_on_release.push_back(state);
         }
     }
+
+    fn osht_is_released(&self, coord: KCoord) -> bool {
+        self.released_keys.contains(&coord)
+    }
 }
 
 /// An iterator over the currently queued events.
@@ -1761,16 +1795,21 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                                         },
                                     )
                             }
-                            LayerModifier { coord, value } => {
+                            LayerModifier {
+                                coord,
+                                value,
+                                flags,
+                            } => {
                                 // LayerModifier is a valid oneshot state,
                                 // may need to keep.
                                 *coord != (i, j)
-                                    || self.oneshot.state_to_retain_on_release.contains(
-                                        &OneShotRetainableState::Layer {
-                                            coord: *coord,
-                                            layer: *value as u16,
-                                        },
-                                    )
+                                    || flags.lmf_is_oneshot()
+                                        && self.oneshot.state_to_retain_on_release.contains(
+                                            &OneShotRetainableState::Layer {
+                                                coord: *coord,
+                                                layer: *value as u16,
+                                            },
+                                        )
                             }
                             // Everything else is not a valid oneshot state,
                             // if it falls on the same coordinate
@@ -2210,7 +2249,10 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                 let _ = self.states.push(NormalKey {
                     coord,
                     keycode,
-                    flags: NormalKeyFlags(0),
+                    flags: NormalKeyFlags(match is_oneshot {
+                        false => 0,
+                        true => NORMAL_KEY_FLAG_IS_ONESHOT,
+                    }),
                 });
                 let mut oneshot_coords = ArrayDeque::new();
                 if !is_oneshot {
@@ -2270,7 +2312,7 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
                         // alongside it. But if the symbol or accented character is held down, key
                         // repeat works just fine.
                         flags: NormalKeyFlags(if is_oneshot {
-                            0
+                            NORMAL_KEY_FLAG_IS_ONESHOT
                         } else {
                             NORMAL_KEY_FLAG_CLEAR_ON_NEXT_ACTION
                         }),
@@ -2375,7 +2417,12 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             }
             &Layer(value) => {
                 self.last_press_tracker.update_coord(coord);
-                let _ = self.states.push(LayerModifier { value, coord });
+                let flags = LayerModifierFlags::lmf_oneshot_flag(is_oneshot);
+                let _ = self.states.push(LayerModifier {
+                    value,
+                    coord,
+                    flags,
+                });
                 if !is_oneshot {
                     self.oneshot
                         .handle_press(OneShotHandlePressKey::Other(coord));
@@ -2460,7 +2507,17 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             }
             Switch(sw) => {
                 let active_keys = self.states.iter().filter_map(State::keycode);
-                let active_coords = self.states.iter().filter_map(State::coord);
+                let active_coords = self.states.iter().filter_map(|s| {
+                    let coord = s.coord();
+                    match s.is_oneshot()
+                        && self
+                            .oneshot
+                            .osht_is_released(coord.expect("all oneshot have coords"))
+                    {
+                        false => coord,
+                        true => None,
+                    }
+                });
                 let historical_keys = self.historical_keys.iter_hevents();
                 let historical_coords = self.historical_inputs.iter_hevents();
                 let layers = self.trans_resolution_layer_order().into_iter();
