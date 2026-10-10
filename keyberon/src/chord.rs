@@ -463,13 +463,13 @@ impl<'a, T> ChordsV2<'a, T> {
                 1 => {
                     // Found a chord that is not fully overlapped by another.
                     // Activate the chord if it is completed
-                    let coord = self.next_coord();
                     let cch = chord_candidates[0];
                     if cch
                         .participating_keys
                         .iter()
                         .all(|pk| accumulated_presses.iter().any(|ap| ap.key == *pk))
                     {
+                        let coord = self.next_coord();
                         let ach = get_active_chord(cch, since, coord, relevant_release_found);
                         let overflow = self.active_chords.push(ach);
                         assert!(overflow.is_ok(), "active chords has room");
@@ -556,8 +556,8 @@ impl<'a, T> ChordsV2<'a, T> {
                 };
             match completed_chord {
                 Some(cch) => {
-                    let ach =
-                        get_active_chord(cch, since, self.next_coord(), relevant_release_found);
+                    let coord = self.next_coord();
+                    let ach = get_active_chord(cch, since, coord, relevant_release_found);
                     let overflow = self.active_chords.push(ach);
                     assert!(overflow.is_ok(), "active chords has room");
                 }

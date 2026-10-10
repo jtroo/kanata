@@ -1401,32 +1401,42 @@ impl Kanata {
         let custom_event = layout.tick();
 
         #[cfg(feature = "tcp_server")]
-        if let Some(hold_info) = layout.tap_hold_tracker.take_hold_activated()
-            && hold_info.coord.0 == NORMAL_KEY_ROW
-            && let Some(tx) = _tx
         {
-            let osc = OsCode::from(hold_info.coord.1);
-            let key = osc.to_string().to_lowercase();
-            log::debug!("HoldActivated: key={key} coord={:?}", hold_info.coord);
-            match tx.try_send(ServerMessage::HoldActivated { key }) {
-                Ok(_) => {}
-                Err(error) => {
-                    log::error!("could not send HoldActivated event: {}", error);
+            let key_name = |key_pos| {
+                if key_pos < KEY_MAX {
+                    let osc = OsCode::from(key_pos);
+                    osc.to_string().to_lowercase()
+                } else {
+                    // The chordsv2 internals uses unnameable faked higher key positions for the
+                    // coordinates of activated actions within keyberon states.
+                    // Give them a custom name.
+                    format!("chordsv2:{}", key_pos - KEY_MAX)
+                }
+            };
+            if let Some(hold_info) = layout.tap_hold_tracker.take_hold_activated()
+                && hold_info.coord.0 == NORMAL_KEY_ROW
+                && let Some(tx) = _tx
+            {
+                let key = key_name(hold_info.coord.1);
+                log::warn!("HoldActivated: key={key} coord={:?}", hold_info.coord);
+                match tx.try_send(ServerMessage::HoldActivated { key }) {
+                    Ok(_) => {}
+                    Err(error) => {
+                        log::error!("could not send HoldActivated event: {}", error);
+                    }
                 }
             }
-        }
-        #[cfg(feature = "tcp_server")]
-        if let Some(tap_info) = layout.tap_hold_tracker.take_tap_activated()
-            && tap_info.coord.0 == NORMAL_KEY_ROW
-            && let Some(tx) = _tx
-        {
-            let osc = OsCode::from(tap_info.coord.1);
-            let key = osc.to_string().to_lowercase();
-            log::debug!("TapActivated: key={key} coord={:?}", tap_info.coord);
-            match tx.try_send(ServerMessage::TapActivated { key }) {
-                Ok(_) => {}
-                Err(error) => {
-                    log::error!("could not send TapActivated event: {}", error);
+            if let Some(tap_info) = layout.tap_hold_tracker.take_tap_activated()
+                && tap_info.coord.0 == NORMAL_KEY_ROW
+                && let Some(tx) = _tx
+            {
+                let key = key_name(tap_info.coord.1);
+                log::warn!("TapActivated: key={key} coord={:?}", tap_info.coord);
+                match tx.try_send(ServerMessage::TapActivated { key }) {
+                    Ok(_) => {}
+                    Err(error) => {
+                        log::error!("could not send TapActivated event: {}", error);
+                    }
                 }
             }
         }
