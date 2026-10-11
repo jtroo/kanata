@@ -116,6 +116,8 @@ pub mod sexpr;
 use sexpr::*;
 mod str_ext;
 pub use str_ext::*;
+mod suppress_keys;
+use suppress_keys::*;
 mod switch;
 pub use switch::*;
 mod tap_dance;
@@ -1763,6 +1765,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         SEQUENCE_NOERASE => parse_sequence_noerase(&ac[1..], s),
         UNMOD => parse_unmod(UNMOD, &ac[1..], s),
         UNSHIFT | UNSHIFT_A => parse_unmod(UNSHIFT, &ac[1..], s),
+        SUPPRESS_KEYS => parse_suppress_keys(&ac[1..], s),
         LIVE_RELOAD_NUM => parse_live_reload_num(&ac[1..], s),
         LIVE_RELOAD_FILE => parse_live_reload_file(&ac[1..], s),
         CLIPBOARD_SET => parse_clipboard_set(&ac[1..], s),
