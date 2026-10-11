@@ -2454,13 +2454,23 @@ This means that with `+macro+` you can have some letters capitalized and others
 not. This is not possible with `+multi+`.
 
 The `+macro+` action accepts one or more keys, some actions, chords, and delays
-(unit: ms).  It also accepts a list prefixed with <<output-chordscombos,output chord>>
+(unit: ms). It also accepts a list prefixed with <<output-chordscombos,output chord>>
 modifiers where the list is subject to the aforementioned restrictions.
 
 IMPORTANT: The number keys `0-9` will be parsed as millisecond delays
 whereas in other contexts they would be parsed as key names.
 To use the numbered keys they must be aliased
 or otherwise use the key names `Digit0-Digit9`.
+
+Keys may also be prefixed with `+d:+` to mean: "down only" (a.k.a. "press only")
+or `+u:+` to mean "up only" (a.k.a. "release only").
+
+IMPORTANT: A key that is pressed down by a macro will remain pressed
+even if the macro ends with no release, e.g. `(macro d:$key)`.
+This key can be released by another macro action that releases it,
+e.g. `(macro u:$key)` or with the action `(release-key $key)`.
+Notably pressing and releasing the same key on your keyboard
+will not release the pressed macro key.
 
 Up to 4 macros can be active at the same time.
 
@@ -2499,6 +2509,10 @@ needs the delay of `5` to work correctly.
   ;; alt-tab(x3) and alt-shift-tab(x3) with macro
   tfd (macro A-(tab 200 tab 200 tab))
   tbk (macro A-S-(tab 200 tab 200 tab))
+
+  ;; Maybe you use F24 as some "special" modifier by another external program.
+  ;; You can wrap some characters within the same macro with F24 and others not.
+  m24 (macro a b d:f24 c d e u:f24 f g)
 )
 ----
 

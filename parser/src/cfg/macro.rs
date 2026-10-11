@@ -145,6 +145,12 @@ pub(crate) fn parse_macro_item_impl<'a>(
                     return Ok((vec![SequenceEvent::Delay { duration }], &acs[1..]));
                 }
                 Err(e) => {
+                    // If this atom is all numeric characters but couldn't be parsed into a u32, it
+                    // is either negative or too large, thus return the error.
+                    //
+                    // In contrast if not all characters are numeric, it can possibly be parsed as
+                    // an action so suppress the error and continue with the rest of the parsing
+                    // code.
                     if a.chars().all(|c| c.is_ascii_digit()) {
                         return Err(e);
                     }
@@ -178,9 +184,54 @@ pub(crate) fn parse_macro_item_impl<'a>(
         Ok(Action::Custom(custom)) => Ok((vec![SequenceEvent::Custom(custom)], &acs[1..])),
         Ok(_) => bail_expr!(&acs[0], "{MACRO_ERR}"),
         Err(e) => {
+            // Error in parsing; first try to parse individual press/release oscodes.
+            // If None, not a final error; can try parsing other options still.
+            let non_tap_action = acs[0].atom(s.vars()).and_then(|a| a.split_once(':'));
+            if let Some(ac) = non_tap_action {
+                // Check for:
+                // - before split = d|u
+                // - after split  = KeyCode
+                //
+                // Any error in this scope becomes final; it is known there exists a colon
+                // character ':' which will fail all remaining parsing.
+
+                enum MacroAction {
+                    Down,
+                    Up,
+                }
+                let macro_action = match ac.0 {
+                    "d" => MacroAction::Down,
+                    "u" => MacroAction::Up,
+                    _ => bail_expr!(
+                        &acs[0],
+                        "Expected 'd:$key' or 'u:$key'. Instead saw '{}:' which is invalid.",
+                        ac.0
+                    ),
+                };
+
+                // Shrink by 2 characters: "d:" or "u:" then parse as an action.
+                // The only valid action is a KeyCode.
+                let Some(key_expr) = acs[0].shrink_atom_span_from_start(2) else {
+                    bail_expr!(&acs[0], "Expected 'd:$key' or 'u:$key'. Key is missing.");
+                };
+                let key = parse_action(&key_expr, s)?;
+                match key {
+                    Action::KeyCode(kc) => {
+                        return Ok((
+                            vec![match macro_action {
+                                MacroAction::Down => SequenceEvent::Press(*kc),
+                                MacroAction::Up => SequenceEvent::Release(*kc),
+                            }],
+                            &acs[1..],
+                        ));
+                    }
+                    _ => bail_expr!(&acs[0], "{MACRO_ERR}"),
+                }
+            }
+
             if let Some(submacro) = acs[0].list(s.vars()) {
-                // If it's just a list that's not parsable as a usable action, try parsing the
-                // content.
+                // Parse a standalone list with subcomponents.
+                // E.g. in "(macro x (a b c) y z)", this parses the "(a b c)".
                 let mut submacro_remainder = submacro;
                 let mut all_events = vec![];
                 while !submacro_remainder.is_empty() {
@@ -192,7 +243,11 @@ pub(crate) fn parse_macro_item_impl<'a>(
                 return Ok((all_events, &acs[1..]));
             }
 
-            let (held_mods, unparsed_str) =
+            // Parse the mods component of a chorded list.
+            // E.g. in "C-S-(a b c)", parses "C-S-".
+            // This is a separate SExpr from the list;
+            // the list is parsed as part of unparsed_str.
+            let (held_mods, unparsed_exprs) =
                 parse_mods_held_for_submacro(&acs[0], s).map_err(|mut err| {
                     if err.msg == MACRO_ERR {
                         err.msg = format!("{}\n{MACRO_ERR}", e.msg);
@@ -206,14 +261,16 @@ pub(crate) fn parse_macro_item_impl<'a>(
                 all_events.push(SequenceEvent::Press(kc));
             }
 
+            // Parse the list component of a chorded list.
+            // E.g. in "C-S-(a b c)", parses "(a b c)".
             let mut rem_start = 1;
-            let maybe_list_var = SExpr::Atom(Spanned::new(unparsed_str.into(), acs[0].span()));
+            let maybe_list_var = SExpr::Atom(Spanned::new(unparsed_exprs.into(), acs[0].span()));
             let submacro = match maybe_list_var.list(s.vars()) {
                 Some(l) => l,
                 None => {
                     // Ensure that the unparsed text is empty since otherwise it means there is
                     // invalid text there
-                    if !unparsed_str.is_empty() {
+                    if !unparsed_exprs.is_empty() {
                         bail_expr!(&acs[0], "{}\n{MACRO_ERR}", &e.msg)
                     }
                     // Check for a follow-up list
