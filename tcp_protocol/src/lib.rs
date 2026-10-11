@@ -11,6 +11,10 @@ use std::str::FromStr;
 pub enum ServerMessage {
     LayerChange {
         new: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        color: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        icon: Option<String>,
     },
     LayerNames {
         names: Vec<String>,
@@ -21,12 +25,20 @@ pub enum ServerMessage {
     CurrentLayerInfo {
         name: String,
         cfg_text: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        color: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        icon: Option<String>,
     },
     ConfigFileReload {
         new: String,
     },
     CurrentLayerName {
         name: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        color: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        icon: Option<String>,
     },
     MessagePush {
         message: serde_json::Value,
