@@ -323,6 +323,8 @@ pub struct Kanata {
     unmodded_mods: UnmodMods,
     /// Keys that should be unshifted. If non-empty, left+right shift keys should be cleared.
     unshifted_keys: Vec<KeyCode>,
+    /// Keys that are suppressed.
+    suppressed_keys: Vec<KeyCode>,
     /// Keep track of last pressed key for [`CustomAction::Repeat`].
     last_pressed_key: KeyCode,
     /// Names of fake keys mapped to their index in the fake keys row
@@ -571,6 +573,7 @@ impl Kanata {
             unmodded_keys: vec![],
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
+            suppressed_keys: vec![],
             last_pressed_key: KeyCode::No,
             virtual_keys: cfg.fake_keys,
             max_key_timing_check: cfg.max_key_timing_check,
@@ -733,6 +736,7 @@ impl Kanata {
             unmodded_keys: vec![],
             unmodded_mods: UnmodMods::empty(),
             unshifted_keys: vec![],
+            suppressed_keys: vec![],
             last_pressed_key: KeyCode::No,
             virtual_keys: cfg.fake_keys,
             max_key_timing_check: cfg.max_key_timing_check,
@@ -1462,6 +1466,9 @@ impl Kanata {
                 CustomAction::Unshifted { keys } => {
                     self.unshifted_keys.extend(keys.iter());
                 }
+                CustomAction::Suppressed { suppressed_keys } => {
+                    self.suppressed_keys.extend(suppressed_keys.iter());
+                }
                 CustomAction::SequenceNoerase(noerase_count) => {
                     if let Some(state) = self.sequence_state.get_active() {
                         log::debug!("adding noerase: {noerase_count}");
@@ -1476,6 +1483,10 @@ impl Kanata {
                 }
                 CustomAction::Unshifted { keys } => {
                     self.unshifted_keys.retain(|k| !keys.contains(k));
+                }
+                CustomAction::Suppressed { suppressed_keys } => {
+                    self.suppressed_keys
+                        .retain(|k| !suppressed_keys.contains(k));
                 }
                 CustomAction::ReverseReleaseOrder => {
                     reverse_release_order = true;
@@ -1504,6 +1515,9 @@ impl Kanata {
         if !self.unshifted_keys.is_empty() {
             cur_keys.retain(|k| !matches!(k, KeyCode::LShift | KeyCode::RShift));
             cur_keys.extend(self.unshifted_keys.iter());
+        }
+        if !self.suppressed_keys.is_empty() {
+            cur_keys.retain(|k| !self.suppressed_keys.contains(k))
         }
 
         self.overrides.override_keys(
@@ -2078,6 +2092,7 @@ impl Kanata {
                     | CustomAction::DelayOnRelease(_)
                     | CustomAction::Unmodded { .. }
                     | CustomAction::Unshifted { .. }
+                    | CustomAction::Suppressed { .. }
                     // Note: ReverseReleaseOrder is already handled earlier on.
                     | CustomAction::ReverseReleaseOrder
                     | CustomAction::CancelMacroOnRelease => {}

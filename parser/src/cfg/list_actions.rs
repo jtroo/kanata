@@ -121,6 +121,7 @@ pub const SEQUENCE_NOERASE: &str = "sequence-noerase";
 pub const UNMOD: &str = "unmod";
 pub const UNSHIFT: &str = "unshift";
 pub const UNSHIFT_A: &str = "un⇧";
+pub const SUPPRESS_KEYS: &str = "suppress-keys";
 pub const LIVE_RELOAD_NUM: &str = "lrld-num";
 pub const LIVE_RELOAD_FILE: &str = "lrld-file";
 pub const ON_PRESS: &str = "on-press";
@@ -255,6 +256,7 @@ pub fn is_list_action(ac: &str) -> bool {
         UNMOD,
         UNSHIFT,
         UNSHIFT_A,
+        SUPPRESS_KEYS,
         LIVE_RELOAD_NUM,
         LIVE_RELOAD_FILE,
         ON_PRESS,

@@ -733,6 +733,9 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   um1 (unmod 1)
   ;; dead keys é (as opposed to using AltGr) that outputs É when shifted
   dké (macro (unmod ') e)
+  ;; You can suppress other arbitrary keys with suppress-keys
+  ;; This example is equivalent to unshift
+  uns (multi (suppress-keys lsft rsft) a)
 
   ;; d:$key and u:$key allow individual press/release of a key
   m24 (macro a b d:f24 c d e u:f24 f g)
