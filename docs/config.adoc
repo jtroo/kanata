@@ -2858,6 +2858,42 @@ rather than all modifiers.
 )
 ----
 
+[[suppress-keys]]
+=== suppress-keys
+
+**Reference**
+
+The `suppress-keys` action applies temporary suppression of the configured keys.
+When suppression is activated, release events will be sent for any key
+that is listed and that is currently pressed.
+When the suppress action is released,
+press events will be sent for any suppressed keys are still pressed.
+
+.Syntax:
+[source]
+----
+(suppress-keys $key1 $key2 ... $keyN)
+----
+
+**Description**
+
+The `suppress-keys' action triggers temporary release of the configured keys.
+The concept is similar to <<unshift>> and <<unmod>>.
+Unlike those actions, `suppress-keys` does not contain separate parameters for
+suppressed keys vs. added keys;
+the configuration is only for suppressed keys.
+If on a single action you wish to suppress a key while also activating different keys,
+use `suppress-keys` within `multi`.
+
+.Example:
+[source]
+----
+(defalias
+  ;; This example is equivalent to unshift
+  uns (multi (suppress-keys lsft rsft) a)
+)
+----
+
 [[fork]]
 === fork
 
