@@ -215,6 +215,30 @@ impl SExpr {
             SExpr::List(l) => l.span.clone(),
         }
     }
+
+    /// Shrinks the span from the start. Works only on an atom; it only adjusts the Position's
+    /// `absolute` field. An atom is guaranteed to all exist on the same line; otherwise a newline
+    /// would create a new atom.
+    ///
+    /// Returns None if the SExpr is a list, or if shrink_by would make the start equal or exceed
+    /// the end.
+    pub fn shrink_atom_span_from_start(&self, shrink_by: usize) -> Option<Self> {
+        match self {
+            SExpr::Atom(a) => {
+                let mut span = a.span.clone();
+                span.start.absolute += shrink_by;
+                if span.start.absolute >= span.end.absolute {
+                    None
+                } else {
+                    Some(SExpr::Atom(Spanned::new(
+                        a.t[shrink_by..].to_string(),
+                        span,
+                    )))
+                }
+            }
+            SExpr::List(_) => None,
+        }
+    }
 }
 
 impl std::fmt::Debug for SExpr {
