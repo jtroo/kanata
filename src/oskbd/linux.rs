@@ -56,6 +56,16 @@ impl KbdIn {
     ) -> Result<Self, io::Error> {
         let poll = Poll::new()?;
 
+        let inotify = watch_devinput().map_err(|e| {
+            log::error!("failed to watch files: {e:?}");
+            e
+        })?;
+        poll.registry().register(
+            &mut SourceFd(&inotify.as_raw_fd()),
+            INOTIFY_TOKEN,
+            Interest::READABLE,
+        )?;
+
         let mut missing_device_paths = None;
         let devices = if !dev_paths.is_empty() {
             missing_device_paths = Some(vec![]);
@@ -84,15 +94,6 @@ impl KbdIn {
                 ));
             }
         }
-        let inotify = watch_devinput().map_err(|e| {
-            log::error!("failed to watch files: {e:?}");
-            e
-        })?;
-        poll.registry().register(
-            &mut SourceFd(&inotify.as_raw_fd()),
-            INOTIFY_TOKEN,
-            Interest::READABLE,
-        )?;
 
         let mut kbdin = Self {
             poll,
