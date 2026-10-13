@@ -238,3 +238,28 @@ fn mwheel_release_leaves_the_other_axis_alone() {
         result
     );
 }
+
+#[test]
+fn mousewheel_speed_scales_scroll_while_held() {
+    let cfg = "(defsrc a b c d)
+         (deflayermap (base)
+           a (mwheel-up 2 120)
+           c (mwheel-left 2 120)
+           d (mwheel-accel-up 10 50 1.15 0.93)
+           b (mousewheel-speed 50))";
+    let result = simulate(cfg, "d:a t:3 d:b t:4 u:b t:4 u:a t:1").to_ascii();
+    assert_eq!(
+        "scroll:Up,120 t:2ms scroll:Up,120 t:2ms scroll:Up,60 t:2ms scroll:Up,60 t:2ms scroll:Up,120 t:2ms scroll:Up,120",
+        result
+    );
+    let result = simulate(cfg, "d:c t:3 d:b t:4 u:b t:4 u:c t:1").to_ascii();
+    assert_eq!(
+        "scroll:Left,120 t:2ms scroll:Left,120 t:2ms scroll:Left,60 t:2ms scroll:Left,60 t:2ms scroll:Left,120 t:2ms scroll:Left,120",
+        result
+    );
+    let result = simulate(cfg, "d:d t:20 d:b t:20 u:b t:20 u:d t:1").to_ascii();
+    assert_eq!(
+        "scroll:Up,11 t:16ms scroll:Up,13 t:16ms scroll:Up,8 t:16ms scroll:Up,17",
+        result
+    );
+}

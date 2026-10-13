@@ -1732,6 +1732,21 @@ WARNING: Due to the nature of pixels being whole numbers, some values such as
 )
 ----
 
+The action `mousewheel-speed` does the same for the mouse wheel. While the key is
+pressed, the scroll distance of `mwheel` and `mwheel-accel` actions, as well as
+gamepad scrolling, is scaled by the given percentage. This also applies to
+scrolling that is already in progress, and the acceleration state of
+`mwheel-accel` is unaffected.
+
+.Example:
+[source]
+----
+(defalias
+  wfst (mousewheel-speed 200)
+  wslw (mousewheel-speed 50)
+)
+----
+
 [[mouse-all-actions-example]]
 ==== Mouse all actions example
 

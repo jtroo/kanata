@@ -183,6 +183,8 @@ pub struct Kanata {
     pub move_mouse_state_horizontal: Option<MoveMouseState>,
     /// A list of mouse speed modifiers in percentages by which mouse travel distance is scaled.
     pub move_mouse_speed_modifiers: Vec<u16>,
+    /// A list of mouse wheel speed modifiers in percentages by which scroll distance is scaled.
+    pub mousewheel_speed_modifiers: Vec<u16>,
     /// Gamepad config declared by `defgamepad`, kept for live reload. `None`
     /// without one: mapped `pad-*` input requires a declaration, even an
     /// empty one.
@@ -493,6 +495,7 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
+            mousewheel_speed_modifiers: Vec::new(),
             gamepad_config: cfg.gamepad,
             gamepad: None,
             gamepad_accumulator: Default::default(),
@@ -656,6 +659,7 @@ impl Kanata {
             move_mouse_state_vertical: None,
             move_mouse_state_horizontal: None,
             move_mouse_speed_modifiers: Vec::new(),
+            mousewheel_speed_modifiers: Vec::new(),
             gamepad_config: cfg.gamepad,
             gamepad: None,
             gamepad_accumulator: Default::default(),
@@ -1162,6 +1166,8 @@ impl Kanata {
             [None, None] => {}
         }
         for (direction, distance) in accrued.scrolls().into_iter().flatten() {
+            let distance =
+                apply_mouse_distance_modifiers(distance, &self.mousewheel_speed_modifiers);
             self.kbd_out.scroll(direction, distance)?;
         }
         Ok(())
@@ -1229,6 +1235,8 @@ impl Kanata {
                     self.scroll_state = None;
                 }
                 _ => {
+                    let distance =
+                        apply_mouse_distance_modifiers(distance, &self.mousewheel_speed_modifiers);
                     self.kbd_out.scroll(direction, distance)?;
                 }
             }
@@ -1240,6 +1248,8 @@ impl Kanata {
                     self.hscroll_state = None;
                 }
                 _ => {
+                    let distance =
+                        apply_mouse_distance_modifiers(distance, &self.mousewheel_speed_modifiers);
                     self.kbd_out.scroll(direction, distance)?;
                 }
             }
@@ -1881,6 +1891,13 @@ impl Kanata {
                             self.move_mouse_speed_modifiers
                         );
                     }
+                    CustomAction::MouseWheelSpeed { speed } => {
+                        self.mousewheel_speed_modifiers.push(*speed);
+                        log::debug!(
+                            "mousewheel speed modifiers: {:?}",
+                            self.mousewheel_speed_modifiers
+                        );
+                    }
                     CustomAction::Cmd(_cmd) => {
                         #[cfg(feature = "cmd")]
                         cmds.push((
@@ -2208,6 +2225,19 @@ impl Kanata {
                     log::debug!(
                         "movemousespeed modifiers: {:?}",
                         self.move_mouse_speed_modifiers
+                    );
+                }
+                CustomAction::MouseWheelSpeed { speed } => {
+                    if let Some(idx) = self
+                        .mousewheel_speed_modifiers
+                        .iter()
+                        .position(|s| *s == *speed)
+                    {
+                        self.mousewheel_speed_modifiers.remove(idx);
+                    }
+                    log::debug!(
+                        "mousewheel speed modifiers: {:?}",
+                        self.mousewheel_speed_modifiers
                     );
                 }
                 CustomAction::DelayOnRelease(delay) => {

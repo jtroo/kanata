@@ -131,6 +131,20 @@ pub(crate) fn parse_move_mouse_speed(
     custom(CustomAction::MoveMouseSpeed { speed }, &s.a)
 }
 
+pub(crate) fn parse_mousewheel_speed(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    if ac_params.len() != 1 {
+        bail!(
+            "mousewheel-speed expects one parameter, found {}\n<speed scaling % (1-65535)>",
+            ac_params.len()
+        );
+    }
+    let speed = parse_non_zero_u16(&ac_params[0], s, "speed scaling %")?;
+    custom(CustomAction::MouseWheelSpeed { speed }, &s.a)
+}
+
 pub(crate) fn parse_set_mouse(
     ac_params: &[SExpr],
     s: &ParserState,

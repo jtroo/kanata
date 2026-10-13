@@ -55,6 +55,9 @@ pub enum CustomAction {
     MoveMouseSpeed {
         speed: u16,
     },
+    MouseWheelSpeed {
+        speed: u16,
+    },
     SequenceCancel,
     SequenceLeader(u16, SequenceInputMode),
     /// Purpose:
