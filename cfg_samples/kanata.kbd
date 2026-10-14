@@ -1170,6 +1170,10 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; given time as you would like, but be warned that some values, such as 33
   ;; may not have correct pixel distance representations.
   fms (movemouse-speed 200)
+
+  ;; mousewheel-speed is the same as movemouse-speed but scales the scroll
+  ;; distance of the mwheel actions instead.
+  sms (mousewheel-speed 50)
 )
 
 (defalias

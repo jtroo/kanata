@@ -559,6 +559,29 @@ fn parse_distance_rejects_out_of_range() {
 }
 
 #[test]
+fn parse_mousewheel_speed() {
+    parse_cfg("(defsrc a) (deflayer base (mousewheel-speed 50))")
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("valid speed should parse");
+    for (action, msg) in [
+        (
+            "(mousewheel-speed)",
+            "mousewheel-speed expects one parameter, found 0",
+        ),
+        (
+            "(mousewheel-speed 50 50)",
+            "mousewheel-speed expects one parameter, found 2",
+        ),
+        ("(mousewheel-speed 0)", "speed scaling % must be 1-65535"),
+        ("(mousewheel-speed fast)", "speed scaling % must be 1-65535"),
+    ] {
+        let err = parse_cfg(&format!("(defsrc a) (deflayer base {action})"))
+            .expect_err("invalid mousewheel-speed should be rejected");
+        assert!(err.msg.contains(msg), "{action}: real e: {}", err.msg);
+    }
+}
+
+#[test]
 fn recursive_multi_is_flattened() {
     macro_rules! atom {
         ($e:expr) => {

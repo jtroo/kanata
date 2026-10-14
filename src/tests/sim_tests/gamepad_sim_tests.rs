@@ -212,6 +212,19 @@ mod motion {
     }
 
     #[test]
+    fn mousewheel_speed_scales_controller_scrolling() {
+        let cfg = "\
+    (defcfg process-unmapped-keys no)
+    (defgamepad (stick left (scroll (speed 4000) (curve linear))))
+    (defsrc a)
+    (deflayer base (mousewheel-speed 50))
+    ";
+        let result = simulate(cfg.to_string(), "d:a t:1 pad:left:0.0,1.0 t:2".to_string());
+        assert!(result.contains("scroll:Up,2"), "{result}");
+        assert!(!result.contains("scroll:Up,4"), "{result}");
+    }
+
+    #[test]
     fn a_trigger_can_drive_the_wheel_by_how_hard_it_is_squeezed() {
         // A trigger is one number, so it is told which way to push. Squeezing
         // harder scrolls faster, which a digital control cannot express.

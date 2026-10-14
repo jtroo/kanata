@@ -1721,6 +1721,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         MWHEEL_ACCEL_DOWN => parse_mwheel_accel(&ac[1..], MWheelDirection::Down, s),
         MWHEEL_ACCEL_LEFT => parse_mwheel_accel(&ac[1..], MWheelDirection::Left, s),
         MWHEEL_ACCEL_RIGHT => parse_mwheel_accel(&ac[1..], MWheelDirection::Right, s),
+        MOUSEWHEEL_SPEED => parse_mousewheel_speed(&ac[1..], s),
         MOVEMOUSE_UP | MOVEMOUSE_UP_A => parse_move_mouse(&ac[1..], MoveDirection::Up, s),
         MOVEMOUSE_DOWN | MOVEMOUSE_DOWN_A => parse_move_mouse(&ac[1..], MoveDirection::Down, s),
         MOVEMOUSE_LEFT | MOVEMOUSE_LEFT_A => parse_move_mouse(&ac[1..], MoveDirection::Left, s),
