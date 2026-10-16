@@ -72,7 +72,7 @@ kanata-tcp-protocol = { path = "tcp_protocol", version = "1.1130.0" }
 gilrs = { version = "0.11.2", default-features = false, features = ["xinput"] }
 
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "android")))'.dependencies]
-arboard = "3.4"
+arboard = { version = "3.4", features = ["wayland-data-control"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 karabiner-driverkit = "0.4.0"
