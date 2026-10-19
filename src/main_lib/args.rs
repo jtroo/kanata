@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(author, version, verbatim_doc_comment)]
+#[command(args_conflicts_with_subcommands = true)]
 /// kanata: an advanced software key remapper
 ///
 /// kanata remaps key presses to other keys or complex actions depending on the
@@ -128,6 +129,20 @@ kanata.kbd in the current working directory and
     #[cfg(target_os = "macos")]
     #[arg(long, verbatim_doc_comment)]
     pub macos_request_permissions: bool,
+
+    #[cfg(all(feature = "tcp_server", not(feature = "gui")))]
+    #[command(subcommand)]
+    pub command: Option<Command>,
+}
+
+#[cfg(all(feature = "tcp_server", not(feature = "gui")))]
+#[derive(clap::Subcommand, Debug)]
+pub enum Command {
+    /// Send a message to the TCP server of a running kanata and exit.
+    ///
+    /// Waits until kanata has processed the message. The exit code is
+    /// non-zero if anything failed, e.g. an unknown layer or virtual key.
+    Msg(super::msg::MsgArgs),
 }
 
 #[cfg(test)]
@@ -194,6 +209,28 @@ mod tests {
 
         let help = Args::command().render_long_help().to_string();
         assert!(help.contains("--macos-request-permissions"));
+    }
+
+    #[cfg(all(feature = "tcp_server", not(feature = "gui")))]
+    #[test]
+    fn msg_subcommand() {
+        let args =
+            Args::try_parse_from(["kanata", "msg", "-p", "9999", "act-on-fake-key", "fk"]).unwrap();
+        assert!(matches!(args.command, Some(Command::Msg(_))));
+    }
+
+    #[cfg(all(feature = "tcp_server", not(feature = "gui")))]
+    #[test]
+    fn no_subcommand_by_default() {
+        let args = Args::try_parse_from(["kanata", "-c", "test.kbd"]).unwrap();
+        assert!(args.command.is_none());
+    }
+
+    #[cfg(all(feature = "tcp_server", not(feature = "gui")))]
+    #[test]
+    fn msg_conflicts_with_daemon_args() {
+        let res = Args::try_parse_from(["kanata", "-c", "test.kbd", "msg", "-p", "1", "hello"]);
+        assert!(res.is_err());
     }
 
     #[test]

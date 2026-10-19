@@ -5916,6 +5916,75 @@ https://github.com/jtroo/kanata/blob/main/tcp_protocol/src/lib.rs[TCP protocol c
 You may also be interested in the
 https://github.com/jtroo/kanata/blob/main/example_tcp_client/src/main.rs[example client].
 
+==== Command-line client: `kanata msg`
+
+`kanata msg` sends one message to a running kanata and exits.
+It waits until kanata has processed the message
+and exits with a non-zero code if anything failed,
+e.g. an unknown layer or virtual key name,
+which makes it suitable for scripts.
+
+[source]
+----
+kanata msg -p 7070 change-layer nav
+kanata msg -p 7070 act-on-fake-key email-sig tap
+kanata msg -p 7070 reload --wait
+kanata msg -p 7070 --json current-layer
+kanata msg -p 7070 event-stream | jq -c 'select(.LayerChange)'
+----
+
+[cols="1,2"]
+|===
+| Subcommand | Description
+
+| `list-layers`
+| Print the names of all layers, one per line.
+
+| `current-layer`
+| Print the name of the active layer.
+
+| `current-layer-info`
+| Print the configuration text of the active layer.
+
+| `list-fake-keys`
+| Print the names of all virtual keys, one per line.
+
+| `hello`
+| Print the kanata version, protocol version and capabilities.
+
+| `change-layer <NAME>`
+| Change the base layer. Fails if the layer does not exist and lists the available layers.
+
+| `act-on-fake-key <NAME> [ACTION]`
+| Act on a virtual key. `ACTION` is `press`, `release`, `tap` or `toggle` (default `tap`). Fails if the key does not exist.
+
+| `set-mouse <X> <Y>`
+| Move the mouse cursor to an absolute position. Failures are not reported because kanata does not reply to it.
+
+| `reload [--wait]`
+| Reload the current configuration file.
+
+| `reload-next [--wait]`
+| Reload the next configuration file.
+
+| `reload-prev [--wait]`
+| Reload the previous configuration file.
+
+| `reload-num <INDEX> [--wait]`
+| Reload the configuration file at a zero-based index of the `--cfg` list.
+
+| `reload-file <PATH> [--wait]`
+| Reload a configuration file. Relative paths are resolved by the kanata process.
+
+| `event-stream`
+| Print every message from kanata as a JSON line until the connection closes, then exit with a non-zero code.
+|===
+
+Replies are printed as plain text; pass `--json` to print the raw JSON lines instead.
+Without `--wait`, a reload succeeds as soon as kanata accepts the request.
+With `--wait`, it succeeds only if the reload finishes successfully within `--timeout-ms` (default 5000).
+Run `kanata msg --help` for all options.
+
 ==== TCP Protocol Overview
 
 The TCP server uses a simple request/response model with JSON messages.

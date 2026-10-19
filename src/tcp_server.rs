@@ -54,6 +54,7 @@ fn to_action(val: FakeKeyActionMessage) -> FakeKeyAction {
 /// Handles reload commands with optional wait/timeout for completion confirmation.
 /// Returns false if the connection should be closed, true otherwise.
 #[cfg(feature = "tcp_server")]
+#[allow(clippy::too_many_arguments)]
 fn handle_reload_with_wait(
     reload_cmd: ClientMessage,
     wait: Option<bool>,
@@ -62,6 +63,7 @@ fn handle_reload_with_wait(
     kanata: &Arc<Mutex<Kanata>>,
     connections: &Connections,
     addr: &str,
+    wakeup_channel: &Sender<KeyEvent>,
 ) -> bool {
     let (response, reload_ok) = match kanata.lock().handle_client_command(reload_cmd) {
         Ok(_) => (ServerResponse::Ok, true),
@@ -78,6 +80,12 @@ fn handle_reload_with_wait(
 
     // If wait flag is set and reload succeeded, poll for completion
     if reload_ok && wait.unwrap_or(false) {
+        // The processing loop may be blocked waiting for input and only does
+        // the reload once woken up, so wake it now instead of after the wait.
+        use kanata_parser::keys::*;
+        wakeup_channel
+            .send(KeyEvent::new(OsCode::KEY_RESERVED, KeyValue::WakeUp))
+            .expect("write key event");
         let timeout_ms = timeout_ms.unwrap_or(5000);
         let start = std::time::Instant::now();
         let timeout_duration = std::time::Duration::from_millis(timeout_ms);
@@ -352,6 +360,7 @@ impl TcpServer {
                                                     &kanata,
                                                     &connections,
                                                     &addr,
+                                                    &wakeup_channel,
                                                 ) {
                                                     break;
                                                 }
@@ -366,6 +375,7 @@ impl TcpServer {
                                                     &kanata,
                                                     &connections,
                                                     &addr,
+                                                    &wakeup_channel,
                                                 ) {
                                                     break;
                                                 }
@@ -380,6 +390,7 @@ impl TcpServer {
                                                     &kanata,
                                                     &connections,
                                                     &addr,
+                                                    &wakeup_channel,
                                                 ) {
                                                     break;
                                                 }
@@ -404,6 +415,7 @@ impl TcpServer {
                                                     &kanata,
                                                     &connections,
                                                     &addr,
+                                                    &wakeup_channel,
                                                 ) {
                                                     break;
                                                 }
@@ -428,6 +440,7 @@ impl TcpServer {
                                                     &kanata,
                                                     &connections,
                                                     &addr,
+                                                    &wakeup_channel,
                                                 ) {
                                                     break;
                                                 }
