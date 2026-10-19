@@ -29,7 +29,7 @@ pub struct MsgArgs {
     json: bool,
 
     #[command(subcommand)]
-    cmd: MsgCommand,
+    msg: MsgCommand,
 }
 
 #[derive(clap::Subcommand, Debug)]
@@ -97,32 +97,48 @@ impl From<FakeKeyAction> for FakeKeyActionMessage {
 
 #[derive(clap::Args, Debug)]
 struct ReloadOpts {
-    /// Wait for the reload to finish and fail if it did not succeed.
-    /// Without this, success only means that kanata accepted the request.
+    /// Do not wait for the reload to finish; success then only means that
+    /// kanata accepted the request.
     #[arg(long)]
-    wait: bool,
+    skip_wait: bool,
 }
 
 impl ReloadOpts {
     /// The `wait` and `timeout_ms` fields of a reload message.
     fn fields(&self, timeout: Duration) -> (Option<bool>, Option<u64>) {
-        if self.wait {
-            (Some(true), Some(timeout.as_millis() as u64))
-        } else {
+        if self.skip_wait {
             (None, None)
+        } else {
+            (Some(true), Some(timeout.as_millis() as u64))
         }
     }
 }
 
-pub fn run(args: MsgArgs) -> Result<()> {
-    let timeout = Duration::from_millis(args.timeout_ms);
-    let mut conn = Conn::connect(args.port.get_ref(), timeout)?;
-    let mut stdout = std::io::stdout().lock();
-    execute(args.cmd, &mut conn, args.json, &mut stdout)
+#[derive(Clone, Copy, Debug)]
+enum OutputFormat {
+    Text,
+    Json,
 }
 
-fn execute(cmd: MsgCommand, conn: &mut Conn, json: bool, out: &mut impl Write) -> Result<()> {
-    match cmd {
+pub fn run(args: MsgArgs) -> Result<()> {
+    let timeout = Duration::from_millis(args.timeout_ms);
+    let output_format = if args.json {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Text
+    };
+    let mut conn = Conn::connect(args.port.get_ref(), timeout)?;
+    let mut stdout = std::io::stdout().lock();
+    execute(args.msg, &mut conn, output_format, &mut stdout)
+}
+
+fn execute(
+    msg: MsgCommand,
+    conn: &mut Conn,
+    output_format: OutputFormat,
+    out: &mut impl Write,
+) -> Result<()> {
+    match msg {
         MsgCommand::ChangeLayer { name } => {
             // kanata silently ignores unknown layers, so check the name first.
             conn.send(&ClientMessage::RequestLayerNames {})?;
@@ -137,7 +153,7 @@ fn execute(cmd: MsgCommand, conn: &mut Conn, json: bool, out: &mut impl Write) -
         MsgCommand::ListLayers => {
             conn.send(&ClientMessage::RequestLayerNames {})?;
             let (line, names) = conn.wait_for(layer_names)?;
-            output(out, json, &line, &names)?;
+            output(out, output_format, &line, &names)?;
         }
         MsgCommand::CurrentLayer => {
             conn.send(&ClientMessage::RequestCurrentLayerName {})?;
@@ -145,7 +161,7 @@ fn execute(cmd: MsgCommand, conn: &mut Conn, json: bool, out: &mut impl Write) -
                 Reply::Message(ServerMessage::CurrentLayerName { name }) => Some(name),
                 _ => None,
             })?;
-            output(out, json, &line, &[name])?;
+            output(out, output_format, &line, &[name])?;
         }
         MsgCommand::CurrentLayerInfo => {
             conn.send(&ClientMessage::RequestCurrentLayerInfo {})?;
@@ -153,7 +169,7 @@ fn execute(cmd: MsgCommand, conn: &mut Conn, json: bool, out: &mut impl Write) -
                 Reply::Message(ServerMessage::CurrentLayerInfo { cfg_text, .. }) => Some(cfg_text),
                 _ => None,
             })?;
-            output(out, json, &line, &[cfg_text])?;
+            output(out, output_format, &line, &[cfg_text])?;
         }
         MsgCommand::ListFakeKeys => {
             conn.send(&ClientMessage::RequestFakeKeyNames {})?;
@@ -161,7 +177,7 @@ fn execute(cmd: MsgCommand, conn: &mut Conn, json: bool, out: &mut impl Write) -
                 Reply::Message(ServerMessage::FakeKeyNames { names }) => Some(names),
                 _ => None,
             })?;
-            output(out, json, &line, &names)?;
+            output(out, output_format, &line, &names)?;
         }
         MsgCommand::ActOnFakeKey { name, action } => {
             conn.send(&ClientMessage::ActOnFakeKey {
@@ -176,36 +192,36 @@ fn execute(cmd: MsgCommand, conn: &mut Conn, json: bool, out: &mut impl Write) -
         }
         MsgCommand::Reload(opts) => {
             let (wait, timeout_ms) = opts.fields(conn.timeout);
-            let msg = ClientMessage::Reload { wait, timeout_ms };
-            reload(conn, msg, opts.wait, json, out)?;
+            let request = ClientMessage::Reload { wait, timeout_ms };
+            reload(conn, request, !opts.skip_wait, output_format, out)?;
         }
         MsgCommand::ReloadNext(opts) => {
             let (wait, timeout_ms) = opts.fields(conn.timeout);
-            let msg = ClientMessage::ReloadNext { wait, timeout_ms };
-            reload(conn, msg, opts.wait, json, out)?;
+            let request = ClientMessage::ReloadNext { wait, timeout_ms };
+            reload(conn, request, !opts.skip_wait, output_format, out)?;
         }
         MsgCommand::ReloadPrev(opts) => {
             let (wait, timeout_ms) = opts.fields(conn.timeout);
-            let msg = ClientMessage::ReloadPrev { wait, timeout_ms };
-            reload(conn, msg, opts.wait, json, out)?;
+            let request = ClientMessage::ReloadPrev { wait, timeout_ms };
+            reload(conn, request, !opts.skip_wait, output_format, out)?;
         }
         MsgCommand::ReloadNum { index, opts } => {
             let (wait, timeout_ms) = opts.fields(conn.timeout);
-            let msg = ClientMessage::ReloadNum {
+            let request = ClientMessage::ReloadNum {
                 index,
                 wait,
                 timeout_ms,
             };
-            reload(conn, msg, opts.wait, json, out)?;
+            reload(conn, request, !opts.skip_wait, output_format, out)?;
         }
         MsgCommand::ReloadFile { path, opts } => {
             let (wait, timeout_ms) = opts.fields(conn.timeout);
-            let msg = ClientMessage::ReloadFile {
+            let request = ClientMessage::ReloadFile {
                 path,
                 wait,
                 timeout_ms,
             };
-            reload(conn, msg, opts.wait, json, out)?;
+            reload(conn, request, !opts.skip_wait, output_format, out)?;
         }
         MsgCommand::Hello => {
             conn.send(&ClientMessage::Hello {})?;
@@ -221,7 +237,7 @@ fn execute(cmd: MsgCommand, conn: &mut Conn, json: bool, out: &mut impl Write) -
                 ]),
                 _ => None,
             })?;
-            output(out, json, &line, &text)?;
+            output(out, output_format, &line, &text)?;
         }
         MsgCommand::EventStream => {
             conn.deadline = None;
@@ -237,28 +253,28 @@ fn execute(cmd: MsgCommand, conn: &mut Conn, json: bool, out: &mut impl Write) -
 /// Send a reload message; with `wait`, also wait for the result of the reload.
 fn reload(
     conn: &mut Conn,
-    msg: ClientMessage,
+    request: ClientMessage,
     wait: bool,
-    json: bool,
+    output_format: OutputFormat,
     out: &mut impl Write,
 ) -> Result<()> {
-    conn.send(&msg)?;
+    conn.send(&request)?;
     let (line, ()) = conn.wait_for(|r| match r {
         Reply::Response(ServerResponse::Ok) => Some(()),
         _ => None,
     })?;
-    output(out, json, &line, &[])?;
+    output(out, output_format, &line, &[])?;
     if !wait {
         return Ok(());
     }
-    // kanata starts its own timeout only after the reply above, so allow some
-    // slack for the result to arrive.
-    conn.restart_timeout(Duration::from_secs(1));
+    // kanata starts its timeout only after the reply above and checks every
+    // 50 ms, so give its timeout report time to arrive before ours fires.
+    conn.restart_timeout(conn.timeout.saturating_add(Duration::from_secs(1)));
     let (line, (ok, timeout_ms)) = conn.wait_for(|r| match r {
         Reply::Message(ServerMessage::ReloadResult { ok, timeout_ms }) => Some((ok, timeout_ms)),
         _ => None,
     })?;
-    output(out, json, &line, &[])?;
+    output(out, output_format, &line, &[])?;
     if let Some(ms) = timeout_ms {
         bail!("reload did not finish within {ms} ms");
     }
@@ -275,13 +291,19 @@ fn layer_names(reply: Reply) -> Option<Vec<String>> {
     }
 }
 
-/// Print the raw reply `line` for `--json`, otherwise `text` line by line.
-fn output(out: &mut impl Write, json: bool, line: &str, text: &[String]) -> Result<()> {
-    if json {
-        writeln!(out, "{line}")?;
-    } else {
-        for t in text {
-            writeln!(out, "{t}")?;
+/// Print the raw reply `line` as JSON, otherwise `text` line by line.
+fn output(
+    out: &mut impl Write,
+    output_format: OutputFormat,
+    line: &str,
+    text: &[String],
+) -> Result<()> {
+    match output_format {
+        OutputFormat::Json => writeln!(out, "{line}")?,
+        OutputFormat::Text => {
+            for t in text {
+                writeln!(out, "{t}")?;
+            }
         }
     }
     Ok(())
@@ -311,10 +333,9 @@ impl Conn {
         })
     }
 
-    /// Restart the reply timeout, allowing `extra` time on top of it.
-    fn restart_timeout(&mut self, extra: Duration) {
-        let timeout = self.timeout.saturating_add(extra);
-        self.deadline = Instant::now().checked_add(timeout);
+    /// Wait at most `duration` from now for the next replies.
+    fn restart_timeout(&mut self, duration: Duration) {
+        self.deadline = Instant::now().checked_add(duration);
     }
 
     fn send(&mut self, msg: &ClientMessage) -> Result<()> {
@@ -329,11 +350,11 @@ impl Conn {
     /// skipped instead of being fatal.
     fn recv(&mut self) -> Result<(String, Option<Reply>)> {
         let now = Instant::now();
-        let timeout = self.deadline.map(|d| d.saturating_duration_since(now));
-        if timeout == Some(Duration::ZERO) {
+        let read_timeout = self.deadline.map(|d| d.saturating_duration_since(now));
+        if read_timeout == Some(Duration::ZERO) {
             bail!(TIMED_OUT);
         }
-        self.stream.get_ref().set_read_timeout(timeout)?;
+        self.stream.get_ref().set_read_timeout(read_timeout)?;
         let mut line = String::new();
         match self.stream.read_line(&mut line) {
             Ok(0) => bail!("kanata closed the connection"),
@@ -415,11 +436,45 @@ mod tests {
         addr
     }
 
-    fn exec(addr: SocketAddr, cmd: MsgCommand, json: bool) -> Result<String> {
+    fn exec(addr: SocketAddr, msg: MsgCommand, output_format: OutputFormat) -> Result<String> {
         let mut conn = Conn::connect(&addr, Duration::from_secs(5))?;
         let mut out: Vec<u8> = Vec::new();
-        execute(cmd, &mut conn, json, &mut out)?;
+        execute(msg, &mut conn, output_format, &mut out)?;
         Ok(String::from_utf8(out)?)
+    }
+
+    #[test]
+    fn msg_command_covers_every_client_message() {
+        // No wildcard arm: a new `ClientMessage` variant fails to compile here
+        // until `MsgCommand` gets a matching subcommand.
+        fn to_msg_command(request: ClientMessage) -> MsgCommand {
+            let opts = || ReloadOpts { skip_wait: false };
+            match request {
+                ClientMessage::ChangeLayer { new } => MsgCommand::ChangeLayer { name: new },
+                ClientMessage::RequestLayerNames {} => MsgCommand::ListLayers,
+                ClientMessage::RequestFakeKeyNames {} => MsgCommand::ListFakeKeys,
+                ClientMessage::RequestCurrentLayerInfo {} => MsgCommand::CurrentLayerInfo,
+                ClientMessage::RequestCurrentLayerName {} => MsgCommand::CurrentLayer,
+                ClientMessage::ActOnFakeKey { name, .. } => MsgCommand::ActOnFakeKey {
+                    name,
+                    action: FakeKeyAction::Tap,
+                },
+                ClientMessage::SetMouse { x, y } => MsgCommand::SetMouse { x, y },
+                ClientMessage::Reload { .. } => MsgCommand::Reload(opts()),
+                ClientMessage::ReloadNext { .. } => MsgCommand::ReloadNext(opts()),
+                ClientMessage::ReloadPrev { .. } => MsgCommand::ReloadPrev(opts()),
+                ClientMessage::ReloadNum { index, .. } => MsgCommand::ReloadNum {
+                    index,
+                    opts: opts(),
+                },
+                ClientMessage::ReloadFile { path, .. } => {
+                    MsgCommand::ReloadFile { path, opts: opts() }
+                }
+                ClientMessage::Hello {} => MsgCommand::Hello,
+            }
+        }
+        let msg = to_msg_command(ClientMessage::Hello {});
+        assert!(matches!(msg, MsgCommand::Hello));
     }
 
     #[test]
@@ -428,7 +483,7 @@ mod tests {
             ClientMessage::RequestLayerNames {} => vec![TAP, LAYER_NAMES],
             _ => vec![],
         });
-        let out = exec(addr, MsgCommand::ListLayers, false).unwrap();
+        let out = exec(addr, MsgCommand::ListLayers, OutputFormat::Text).unwrap();
         assert_eq!(out, "base\nnav\n");
     }
 
@@ -438,7 +493,7 @@ mod tests {
             ClientMessage::RequestCurrentLayerName {} => vec![CURRENT_LAYER],
             _ => vec![],
         });
-        let out = exec(addr, MsgCommand::CurrentLayer, true).unwrap();
+        let out = exec(addr, MsgCommand::CurrentLayer, OutputFormat::Json).unwrap();
         assert_eq!(out, format!("{CURRENT_LAYER}\n"));
     }
 
@@ -448,8 +503,8 @@ mod tests {
             ClientMessage::RequestLayerNames {} => vec![LAYER_NAMES],
             _ => vec![],
         });
-        let cmd = MsgCommand::ChangeLayer { name: "num".into() };
-        let err = exec(addr, cmd, false).unwrap_err();
+        let msg = MsgCommand::ChangeLayer { name: "num".into() };
+        let err = exec(addr, msg, OutputFormat::Text).unwrap_err();
         assert!(err.to_string().contains("available layers: base, nav"));
     }
 
@@ -460,11 +515,11 @@ mod tests {
             ClientMessage::RequestCurrentLayerName {} => vec![CURRENT_LAYER],
             _ => vec![],
         });
-        let cmd = MsgCommand::ActOnFakeKey {
+        let msg = MsgCommand::ActOnFakeKey {
             name: "x".into(),
             action: FakeKeyAction::Tap,
         };
-        let err = exec(addr, cmd, false).unwrap_err();
+        let err = exec(addr, msg, OutputFormat::Text).unwrap_err();
         assert!(err.to_string().contains("unknown virtual/fake key"));
     }
 
@@ -474,8 +529,8 @@ mod tests {
             ClientMessage::Reload { .. } => vec![RESPONSE_OK, RELOAD_FAILED],
             _ => vec![],
         });
-        let cmd = MsgCommand::Reload(ReloadOpts { wait: true });
-        assert!(exec(addr, cmd, false).is_err());
+        let msg = MsgCommand::Reload(ReloadOpts { skip_wait: false });
+        assert!(exec(addr, msg, OutputFormat::Text).is_err());
     }
 
     #[test]
@@ -483,7 +538,13 @@ mod tests {
         let addr = fake_kanata(|_| vec![]);
         let mut conn = Conn::connect(&addr, Duration::from_millis(200)).unwrap();
         let mut out: Vec<u8> = Vec::new();
-        let err = execute(MsgCommand::CurrentLayer, &mut conn, false, &mut out).unwrap_err();
+        let err = execute(
+            MsgCommand::CurrentLayer,
+            &mut conn,
+            OutputFormat::Text,
+            &mut out,
+        )
+        .unwrap_err();
         assert!(err.to_string().contains("timed out"));
     }
 }

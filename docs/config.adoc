@@ -5928,7 +5928,7 @@ which makes it suitable for scripts.
 ----
 kanata msg -p 7070 change-layer nav
 kanata msg -p 7070 act-on-fake-key email-sig tap
-kanata msg -p 7070 reload --wait
+kanata msg -p 7070 reload --skip-wait
 kanata msg -p 7070 --json current-layer
 kanata msg -p 7070 event-stream | jq -c 'select(.LayerChange)'
 ----
@@ -5961,19 +5961,19 @@ kanata msg -p 7070 event-stream | jq -c 'select(.LayerChange)'
 | `set-mouse <X> <Y>`
 | Move the mouse cursor to an absolute position. Failures are not reported because kanata does not reply to it.
 
-| `reload [--wait]`
+| `reload [--skip-wait]`
 | Reload the current configuration file.
 
-| `reload-next [--wait]`
+| `reload-next [--skip-wait]`
 | Reload the next configuration file.
 
-| `reload-prev [--wait]`
+| `reload-prev [--skip-wait]`
 | Reload the previous configuration file.
 
-| `reload-num <INDEX> [--wait]`
+| `reload-num <INDEX> [--skip-wait]`
 | Reload the configuration file at a zero-based index of the `--cfg` list.
 
-| `reload-file <PATH> [--wait]`
+| `reload-file <PATH> [--skip-wait]`
 | Reload a configuration file. Relative paths are resolved by the kanata process.
 
 | `event-stream`
@@ -5981,8 +5981,8 @@ kanata msg -p 7070 event-stream | jq -c 'select(.LayerChange)'
 |===
 
 Replies are printed as plain text; pass `--json` to print the raw JSON lines instead.
-Without `--wait`, a reload succeeds as soon as kanata accepts the request.
-With `--wait`, it succeeds only if the reload finishes successfully within `--timeout-ms` (default 5000).
+A reload succeeds only if it finishes successfully within `--timeout-ms` (default 5000).
+With `--skip-wait`, it succeeds as soon as kanata accepts the request.
 Run `kanata msg --help` for all options.
 
 ==== TCP Protocol Overview
