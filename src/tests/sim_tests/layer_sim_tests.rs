@@ -185,3 +185,78 @@ fn ls_sim_transparent_no_delegate() {
 // =============================================================================
 // End Layer Switch Simulator Input Tests
 // =============================================================================
+
+const LAYER_LOCK_TOGGLE_CFG: &str = r"
+    (defsrc a b c)
+    (defalias lk (layer-lock-toggle nums))
+    (deflayer base @lk y (release-layer nums))
+    (deflayer nums @lk 1 _)
+";
+
+#[test]
+fn layer_lock_toggle_outlives_the_key_press() {
+    let result = simulate(
+        LAYER_LOCK_TOGGLE_CFG,
+        "d:a t:10 u:a t:10 d:b t:10 u:b t:10 d:a t:10 u:a t:10 d:b t:10 u:b t:10",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:20ms dn:Kb1 t:10ms up:Kb1 t:30ms dn:Y t:10ms up:Y",
+        result
+    );
+}
+
+#[test]
+fn layer_lock_toggle_can_relock_after_release_layer() {
+    let result = simulate(
+        LAYER_LOCK_TOGGLE_CFG,
+        "d:c t:10 u:c t:10 d:a t:10 u:a t:10 d:b t:10 u:b t:10",
+    )
+    .to_ascii();
+    assert_eq!("t:40ms dn:Kb1 t:10ms up:Kb1", result);
+}
+
+#[test]
+fn layer_lock_toggle_does_not_collide_with_virtual_keys() {
+    const CFG: &str = r"
+        (defsrc a b)
+        (defvirtualkeys vk1 x vk2 x vk3 x)
+        (defalias lk (layer-lock-toggle nums))
+        (deflayer base @lk y)
+        (deflayer nums @lk 1)
+    ";
+    let result = simulate(CFG, "d:a t:10 u:a t:10 d:b t:10 u:b t:10").to_ascii();
+    assert_eq!("t:20ms dn:Kb1 t:10ms up:Kb1", result);
+}
+
+/// The virtual key map is still filling here, so the slot must survive the final count.
+#[test]
+fn layer_lock_toggle_inside_virtual_keys_still_activates_the_layer() {
+    const CFG: &str = r"
+        (defsrc a b)
+        (defvirtualkeys lk (layer-lock-toggle nums) vk1 x vk2 x)
+        (deflayer base (on-press-fakekey lk tap) y)
+        (deflayer nums _ 1)
+    ";
+    let result = simulate(CFG, "d:a t:10 u:a t:10 d:b t:10 u:b t:10").to_ascii();
+    assert_eq!("t:20ms dn:Kb1 t:10ms up:Kb1", result);
+}
+
+#[test]
+fn layer_lock_toggle_masks_layer_switch_until_released() {
+    const CFG: &str = r"
+        (defsrc a b c)
+        (defalias lk (layer-lock-toggle nums))
+        (deflayer base @lk y (layer-switch other))
+        (deflayer nums @lk 1 _)
+        (deflayer other @lk 9 _)
+    ";
+    let locked = simulate(CFG, "d:a t:10 u:a t:10 d:c t:10 u:c t:10 d:b t:10 u:b t:10").to_ascii();
+    assert_eq!("t:40ms dn:Kb1 t:10ms up:Kb1", locked);
+    let released = simulate(
+        CFG,
+        "d:a t:10 u:a t:10 d:c t:10 u:c t:10 d:a t:10 u:a t:10 d:b t:10 u:b t:10",
+    )
+    .to_ascii();
+    assert_eq!("t:60ms dn:Kb9 t:10ms up:Kb9", released);
+}
