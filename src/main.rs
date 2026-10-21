@@ -247,6 +247,10 @@ mod cli {
 #[cfg(not(feature = "gui"))]
 pub fn main() -> Result<()> {
     let args = Args::parse();
+    #[cfg(feature = "tcp_server")]
+    if let Some(main_lib::args::Command::Msg(msg_args)) = args.command {
+        return main_lib::msg::run(msg_args);
+    }
     let no_wait = args.no_wait;
     let ret = cli::main_impl();
     if let Err(ref e) = ret {
