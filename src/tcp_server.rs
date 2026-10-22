@@ -179,14 +179,21 @@ impl TcpServer {
                             }
                         };
 
-                        connections.lock().insert(
-                            addr.clone(),
-                            stream.try_clone().expect("stream is clonable"),
-                        );
-                        let reader = serde_json::Deserializer::from_reader(
-                            stream.try_clone().expect("stream is clonable"),
-                        )
-                        .into_iter::<ClientMessage>();
+                        // Cloning needs a new file descriptor, so it fails when the process is
+                        // out of them. Drop this client instead of panicking the accept thread.
+                        let (notifier, reader_stream) =
+                            match (stream.try_clone(), stream.try_clone()) {
+                                (Ok(notifier), Ok(reader_stream)) => (notifier, reader_stream),
+                                (Err(e), _) | (_, Err(e)) => {
+                                    log::error!(
+                                        "failed to clone stream, dropping client {addr}: {e:?}"
+                                    );
+                                    continue;
+                                }
+                            };
+                        connections.lock().insert(addr.clone(), notifier);
+                        let reader = serde_json::Deserializer::from_reader(reader_stream)
+                            .into_iter::<ClientMessage>();
 
                         log::info!("listening for incoming messages {addr}");
 
@@ -468,6 +475,10 @@ impl TcpServer {
                                     }
                                 }
                             }
+                            // The reader also ends when the client disconnects. Without this, the
+                            // notification stream stays in the map, holding a file descriptor,
+                            // until a later broadcast to it fails.
+                            connections.lock().remove(&addr);
                         });
                     }
                     Err(_) => log::error!("not able to accept client connection"),

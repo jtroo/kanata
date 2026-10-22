@@ -144,6 +144,8 @@ mod suppress_keys_tests;
 mod switch_sim_tests;
 mod tap_dance_tests;
 mod tap_hold_tests;
+#[cfg(feature = "tcp_server")]
+mod tcp_server_tests;
 mod template_sim_tests;
 mod timing_tests;
 mod unicode_sim_tests;
