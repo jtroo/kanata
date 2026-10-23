@@ -58,6 +58,22 @@ pub enum ServerMessage {
     TapActivated {
         key: String,
     },
+    /// Original physical input received by Kanata before remapping.
+    /// Only sent to clients that enable physical key event delivery.
+    PhysicalKey {
+        key: String,
+        code: u16,
+        state: PhysicalKeyState,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PhysicalKeyState {
+    Press,
+    Release,
+    Repeat,
+    Tap,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -141,6 +157,11 @@ pub enum ClientMessage {
     /// Request server capabilities and version.
     /// Introduced in protocol v1.11.
     Hello {},
+
+    /// Enable or disable physical key event notifications for this connection.
+    SubscribePhysicalKeyEvents {
+        enabled: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -279,5 +300,36 @@ mod tests {
         };
         let json = serde_json::to_string(&msg).unwrap();
         assert_eq!(json, r#"{"TapActivated":{"key":"a"}}"#);
+    }
+
+    #[test]
+    fn test_physical_key_json_format() {
+        let msg = ServerMessage::PhysicalKey {
+            key: "w".to_string(),
+            code: 17,
+            state: PhysicalKeyState::Press,
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(
+            json,
+            r#"{"PhysicalKey":{"key":"w","code":17,"state":"press"}}"#
+        );
+
+        let parsed: ServerMessage = serde_json::from_str(&json).unwrap();
+        assert!(matches!(
+            parsed,
+            ServerMessage::PhysicalKey {
+                key,
+                code: 17,
+                state: PhysicalKeyState::Press,
+            } if key == "w"
+        ));
+    }
+
+    #[test]
+    fn test_subscribe_physical_key_events_json_format() {
+        let msg = ClientMessage::SubscribePhysicalKeyEvents { enabled: true };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(json, r#"{"SubscribePhysicalKeyEvents":{"enabled":true}}"#);
     }
 }
