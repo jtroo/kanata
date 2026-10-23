@@ -293,6 +293,57 @@ mod inner {
     }
 
     #[cfg(feature = "zippychord")]
+    /// One non-blank, non-comment line of a zippychord chord file, split on its
+    /// tab into `input` and `output`. Both are kept **verbatim** —
+    /// leading/interior spaces in `input` are significant. `line_number` is
+    /// 1-based, `line` is the full original line (for error messages).
+    pub struct ZchFileLine<'a> {
+        pub line_number: usize,
+        pub line: &'a str,
+        pub input: &'a str,
+        pub output: &'a str,
+    }
+
+    /// The single source of truth for the zippychord chord-file line grammar:
+    /// skip blank and `//`-comment lines, split the rest on a tab into
+    /// `(input, output)` in file order. On a malformed line it returns the
+    /// 1-based line number and a ready-to-display message. Shared by config
+    /// parsing (below) and the test-only config minimizer, so neither drifts
+    /// from the other.
+    pub fn zch_file_lines(content: &str) -> std::result::Result<Vec<ZchFileLine<'_>>, (usize, String)>
+    {
+        let mut lines = Vec::new();
+        for (idx, line) in content.lines().enumerate() {
+            let line_number = idx + 1;
+            if line.trim().is_empty() || line.trim().starts_with("//") {
+                continue;
+            }
+            let Some((input, output)) = line.split_once('\t') else {
+                return Err((
+                    line_number,
+                    format!(
+                        "Input and output are separated by a tab, but found no tab:\n{line_number}: {line}"
+                    ),
+                ));
+            };
+            if input.is_empty() {
+                return Err((
+                    line_number,
+                    format!(
+                        "No input defined; line must not begin with a tab:\n{line_number}: {line}"
+                    ),
+                ));
+            }
+            lines.push(ZchFileLine {
+                line_number,
+                line,
+                input,
+                output,
+            });
+        }
+        Ok(lines)
+    }
+
     pub(super) fn parse_zippy_inner(
         exprs: &[SExpr],
         s: &ParserState,
@@ -568,28 +619,13 @@ mod inner {
         let input_data = f
             .get_file_content(file_name.as_ref())
             .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
-        let res = input_data
-            .lines()
-            .enumerate()
-            .filter(|(_, line)| !line.trim().is_empty() && !line.trim().starts_with("//"))
-            .try_fold(
+        let file_lines = match zch_file_lines(&input_data) {
+            Ok(lines) => lines,
+            Err((_, msg)) => bail_expr!(&exprs[1], "{msg}"),
+        };
+        let res = file_lines.into_iter().try_fold(
                 Arc::new(Mutex::new(ZchPossibleChords(SubsetMap::ssm_new()))),
-                |zch, (line_number, line)| {
-                    let Some((input, output)) = line.split_once('\t') else {
-                        bail_expr!(
-                        &exprs[1],
-                        "Input and output are separated by a tab, but found no tab:\n{}: {line}",
-                        line_number + 1
-                    );
-                    };
-                    if input.is_empty() {
-                        bail_expr!(
-                            &exprs[1],
-                            "No input defined; line must not begin with a tab:\n{}: {line}",
-                            line_number + 1
-                        );
-                    }
-
+                |zch, ZchFileLine { line_number, line, input, output }| {
                     let mut char_buf: [u8; 4] = [0; 4];
                     let output = {
                         output
@@ -609,7 +645,7 @@ mod inner {
                                             &exprs[1],
                                             "Unknown output key name '{}':\n{}: {line}",
                                             out_char,
-                                            line_number + 1,
+                                            line_number,
                                         )
                                     })?,
                                 };
@@ -657,7 +693,7 @@ mod inner {
                                     anyhow_expr!(
                                         &exprs[1],
                                         "Unknown input key name: '{key_name}':\n{}: {line}",
-                                        line_number + 1
+                                        line_number
                                     )
                                 })?;
                                 input_chord.zchik_insert(osc);
@@ -673,7 +709,7 @@ mod inner {
                                 bail_expr!(
                             &exprs[1],
                             "Found duplicate input chord, which is disallowed {input}:\n{}: {line}",
-                            line_number + 1
+                            line_number
                         );
                             }
                             (true, _) => {
