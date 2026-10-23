@@ -582,6 +582,19 @@ fn parse_mousewheel_speed() {
 }
 
 #[test]
+fn parse_setmouse_wrong_param_count_names_setmouse() {
+    for action in ["(setmouse 1)", "(setmouse 1 2 3)"] {
+        let err = parse_cfg(&format!("(defsrc a) (deflayer base {action})"))
+            .expect_err("setmouse with wrong parameter count should be rejected");
+        assert!(
+            err.msg.contains("setmouse expects two parameters"),
+            "{action}: real e: {}",
+            err.msg
+        );
+    }
+}
+
+#[test]
 fn recursive_multi_is_flattened() {
     macro_rules! atom {
         ($e:expr) => {

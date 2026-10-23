@@ -151,7 +151,7 @@ pub(crate) fn parse_set_mouse(
 ) -> Result<&'static KanataAction> {
     if ac_params.len() != 2 {
         bail!(
-            "movemouse-accel expects two parameters, found {}: <x> <y>",
+            "setmouse expects two parameters, found {}: <x> <y>",
             ac_params.len()
         );
     }
