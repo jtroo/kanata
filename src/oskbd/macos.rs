@@ -693,7 +693,7 @@ impl KbdIn {
         // Kanata config parser should probably enforce this.
         let has_device_filter = include_names.is_some() || exclude_names.is_some();
         let device_names = if let Some(ref included_names) = include_names {
-            validate_and_register_devices(included_names)
+            validate_and_register_devices(included_names, device_matches, register_device)
         } else if let Some(ref excluded_names) = exclude_names {
             // Exclude list: enumerate devices, filter out excluded and
             // known-problematic virtual devices (Sidecar, etc.), then
@@ -713,7 +713,7 @@ impl KbdIn {
                 })
                 .collect::<Vec<String>>();
 
-            validate_and_register_devices(&devices_to_include)
+            validate_and_register_devices(&devices_to_include, device_matches, register_device)
         } else {
             vec![]
         };
@@ -944,7 +944,11 @@ fn build_device_hash_to_id_map(
     map
 }
 
-fn validate_and_register_devices(include_names: &[String]) -> Vec<String> {
+fn validate_and_register_devices(
+    include_names: &[String],
+    mut matches: impl FnMut(&str) -> bool,
+    mut register: impl FnMut(&str) -> bool,
+) -> Vec<String> {
     include_names
         .iter()
         .filter_map(|dev| {
@@ -952,7 +956,9 @@ fn validate_and_register_devices(include_names: &[String]) -> Vec<String> {
 
             // Defensive check: skip empty device names that could cause crashes
             if dev.trim().is_empty() {
-                log::warn!("Skipping empty device name (likely old keyboard without proper identification)");
+                log::warn!(
+                    "Skipping empty device name (likely old keyboard without proper identification)"
+                );
                 return None;
             }
 
@@ -962,19 +968,26 @@ fn validate_and_register_devices(include_names: &[String]) -> Vec<String> {
                 return None;
             }
 
-            match device_matches(dev) {
-                true => Some(dev.to_string()),
-                false => {
-                    log::warn!("'{dev}' doesn't match any connected device");
-                    None
-                }
+            let hash = dev
+                .strip_prefix("0x")
+                .or_else(|| dev.strip_prefix("0X"))
+                .unwrap_or(dev);
+            let is_hash = u64::from_str_radix(hash, 16).is_ok();
+            if !is_hash && !matches(dev) {
+                log::warn!("'{dev}' doesn't match any connected device");
+                return None;
             }
-        })
-        .filter_map(|dev| {
-            if register_device(&dev) {
+
+            if register(dev) {
                 Some(dev.to_string())
             } else {
-                log::warn!("Couldn't register device '{}' - device may be in use by another application or disconnected", dev);
+                if is_hash {
+                    log::info!("Device '{dev}' is not currently connected");
+                } else {
+                    log::warn!(
+                        "Couldn't register device '{dev}' - no matching connected device found"
+                    );
+                }
                 None
             }
         })
@@ -983,7 +996,68 @@ fn validate_and_register_devices(include_names: &[String]) -> Vec<String> {
 
 #[cfg(test)]
 mod device_name_tests {
-    use super::sanitize_device_name;
+    use super::{sanitize_device_name, validate_and_register_devices};
+
+    #[test]
+    fn registration_preserves_names_and_disconnected_hashes() {
+        let names = [
+            "0x9EAAE318C1BA6304\0ignored",
+            "0x7A02521BF12E02AC",
+            "0X00001234",
+            "1234abcd",
+            "Keychron K8 Pro",
+            "Keychron Link ",
+            "0xnot-a-hash",
+            "",
+            " \t",
+            "\0invalid",
+            "Karabiner DriverKit VirtualHIDKeyboard",
+        ]
+        .map(str::to_owned);
+
+        for connected_device in [
+            None,
+            Some("0x9EAAE318C1BA6304"),
+            Some("Keychron K8 Pro"),
+            Some("Keychron Link "),
+        ] {
+            let mut matched = Vec::new();
+            let mut registered = Vec::new();
+            let connected = validate_and_register_devices(
+                &names,
+                |name| {
+                    matched.push(name.to_owned());
+                    Some(name) == connected_device
+                },
+                |name| {
+                    registered.push(name.to_owned());
+                    Some(name) == connected_device
+                },
+            );
+
+            assert_eq!(
+                matched,
+                ["Keychron K8 Pro", "Keychron Link ", "0xnot-a-hash"]
+            );
+            let mut expected_registered = vec![
+                "0x9EAAE318C1BA6304",
+                "0x7A02521BF12E02AC",
+                "0X00001234",
+                "1234abcd",
+            ];
+            if let Some(name @ ("Keychron K8 Pro" | "Keychron Link ")) = connected_device {
+                expected_registered.push(name);
+            }
+            assert_eq!(registered, expected_registered);
+            assert_eq!(
+                connected,
+                connected_device
+                    .into_iter()
+                    .map(str::to_owned)
+                    .collect::<Vec<_>>()
+            );
+        }
+    }
 
     #[test]
     fn valid_device_name_is_unchanged() {
