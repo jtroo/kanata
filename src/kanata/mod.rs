@@ -2105,6 +2105,10 @@ impl Kanata {
                     CustomAction::ClipboardSaveSwap(id1, id2) => {
                         clpb_save_swap(*id1, *id2, &mut self.saved_clipboard_content);
                     }
+                    CustomAction::FakeKeyReleaseAll => {
+                        log::debug!("releasing all virtual keys");
+                        release_all_fake_keys(layout);
+                    }
                     CustomAction::FakeKeyOnRelease { .. }
                     | CustomAction::DelayOnRelease(_)
                     | CustomAction::Unmodded { .. }
@@ -3195,18 +3199,40 @@ pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
     };
 }
 
-fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
-    states.iter().any(|s| match s {
+/// Release every virtual key that currently has an active state in the layout.
+fn release_all_fake_keys<'a, const C: usize, const R: usize, T>(layout: &mut Layout<'a, C, R, T>)
+where
+    T: 'a + std::fmt::Debug + Copy,
+{
+    let mut pressed: Vec<u16> = layout
+        .states
+        .iter()
+        .filter_map(|s| state_coord(s).filter(|&(x, _)| x == FAKE_KEY_ROW))
+        .map(|(_, y)| y)
+        .collect();
+    pressed.sort_unstable();
+    pressed.dedup();
+    for y in pressed {
+        layout.event(Event::Release(FAKE_KEY_ROW, y));
+    }
+}
+
+fn state_coord<T>(state: &State<T>) -> Option<(u8, u16)> {
+    match state {
         State::NormalKey { coord, .. }
         | State::LayerModifier { coord, .. }
         | State::Custom { coord, .. }
         | State::NoOpInput { coord }
-        | State::RepeatingSequence { coord, .. } => *coord == (x, y),
+        | State::RepeatingSequence { coord, .. } => Some(*coord),
         State::FakeKey { .. }
         | State::SeqCustomPending(_)
         | State::SeqCustomActive(_)
-        | State::Tombstone => false,
-    })
+        | State::Tombstone => None,
+    }
+}
+
+fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
+    states.iter().any(|s| state_coord(s) == Some((x, y)))
 }
 
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]

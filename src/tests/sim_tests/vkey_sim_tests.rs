@@ -241,3 +241,34 @@ fn on_idle_must_be_single_threaded() {
     .to_ascii();
     assert_eq!("t:137ms dn:LGui t:1ms up:LGui", result);
 }
+
+#[test]
+fn release_all_vkeys() {
+    const CFG: &str = r"
+        (defsrc a b c d e f)
+        (defvirtualkeys
+            vk1 lctl
+            vk2 lsft
+            vk3 lalt)
+        (deflayer base
+            (on-press toggle-vkey vk1)
+            (on-press press-vkey vk2)
+            (on-press press-vkey vk3)
+            release-all-vkeys
+            release-all-virtualkeys
+            x
+        )
+    ";
+    // Toggled and pressed virtual keys are all released.
+    let result = simulate(CFG, "d:a u:a t:10 d:b u:b t:10 d:c u:c t:10 d:d u:d t:10").to_ascii();
+    assert_eq!(
+        "t:2ms dn:LCtrl t:10ms dn:LShift t:10ms dn:LAlt t:10ms up:LCtrl t:1ms up:LShift t:1ms up:LAlt",
+        result
+    );
+    // A held real key is left alone.
+    let result = simulate(CFG, "d:f t:10 d:a u:a t:10 d:e u:e t:10").to_ascii();
+    assert_eq!("dn:X t:12ms dn:LCtrl t:10ms up:LCtrl", result);
+    // Nothing happens when no virtual key is pressed.
+    let result = simulate(CFG, "d:d u:d t:10").to_ascii();
+    assert_eq!("", result);
+}

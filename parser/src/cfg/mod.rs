@@ -1521,6 +1521,9 @@ fn parse_action_atom(ac_span: &Spanned<String>, s: &ParserState) -> Result<&'sta
                 &s.a,
             );
         }
+        "release-all-virtualkeys" | "release-all-vkeys" => {
+            return custom(CustomAction::FakeKeyReleaseAll, &s.a);
+        }
         "rpt" | "repeat" | "rpt-key" => return custom(CustomAction::Repeat, &s.a),
         "rpt-any" => return Ok(s.a.sref(Action::Repeat)),
         "dynamic-macro-record-stop" => {
