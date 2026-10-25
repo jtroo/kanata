@@ -100,6 +100,7 @@ pub(super) fn do_sequence_press_logic(
     sequences: &kanata_parser::trie::Trie<(u8, u16)>,
     sequence_backtrack_modcancel: bool,
     layout: &mut BorrowedKLayout,
+    tx: &Option<Sender<ServerMessage>>,
 ) -> Result<(), anyhow::Error> {
     state.ticks_until_timeout = state.sequence_timeout;
     let osc = OsCode::from(*k);
@@ -232,16 +233,24 @@ pub(super) fn do_sequence_press_logic(
             }
             if res == NotInTrie || state.sequence.is_empty() {
                 log::debug!("invalid keys for seq");
+                notify_seq_state(
+                    tx,
+                    SeqPhase::Cancelled,
+                    seq_key_names(&state.sequence),
+                    Vec::new(),
+                );
                 cancel_sequence(state, kbd_out)?;
             }
         }
     }
 
     // Check for successful sequence termination.
+    let mut completed = false;
     if let HasValue((i, j)) = res_overlapped {
         // First, check for a valid simultaneous completion.
         // Simultaneous completion should take priority.
         do_successful_sequence_termination(kbd_out, state, layout, i, j, EndSequenceType::Overlap)?;
+        completed = true;
     } else if let HasValue((i, j)) = res {
         // Try terminating the overlapping and check if simultaneous termination worked.
         // Simultaneous completion should take priority.
@@ -255,6 +264,7 @@ pub(super) fn do_sequence_press_logic(
                 oj,
                 EndSequenceType::Overlap,
             )?;
+            completed = true;
         } else {
             do_successful_sequence_termination(
                 kbd_out,
@@ -264,9 +274,74 @@ pub(super) fn do_sequence_press_logic(
                 j,
                 EndSequenceType::Standard,
             )?;
+            completed = true;
         }
     }
+    if completed {
+        notify_seq_state(
+            tx,
+            SeqPhase::Completed,
+            seq_key_names(&state.sequence),
+            Vec::new(),
+        );
+    } else if res != NotInTrie || res_overlapped != NotInTrie {
+        let candidates = seq_candidates_string(sequences, &state.sequence);
+        notify_seq_state(
+            tx,
+            SeqPhase::Advanced,
+            seq_key_names(&state.sequence),
+            candidates,
+        );
+    }
     Ok(())
+}
+
+/// Space-joined key names of a sequence-element list, for the TCP `SeqState`
+/// message. Overlap markers are skipped and modifier bits are stripped, so a
+/// chorded sequence renders as its base keys.
+pub(super) fn seq_key_names(elems: &[u16]) -> String {
+    elems
+        .iter()
+        .filter(|k| **k != KEY_OVERLAP_MARKER)
+        .map(|k| OsCode::from(*k & MASK_KEYCODES).to_string().to_lowercase())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Full defseq sequences completing the given prefix, as space-joined
+/// key-name strings; computed from the trie so clients need no config
+/// knowledge.
+pub(super) fn seq_candidates_string(
+    sequences: &kanata_parser::trie::Trie<(u8, u16)>,
+    prefix: &[u16],
+) -> Vec<String> {
+    sequences
+        .get_prefix_matches(prefix)
+        .iter()
+        .map(|(elems, _)| seq_key_names(elems))
+        .collect()
+}
+
+/// Best-effort TCP notification of a sequence-state transition; mirrors the
+/// `HoldActivated` emission pattern (send failure logs, never errors). The
+/// `SeqState` payload is key-identity data, so the emission itself logs only
+/// at debug level.
+pub(super) fn notify_seq_state(
+    tx: &Option<Sender<ServerMessage>>,
+    phase: SeqPhase,
+    prefix: String,
+    candidates: Vec<String>,
+) {
+    if let Some(tx) = tx {
+        match tx.try_send(ServerMessage::SeqState {
+            prefix,
+            candidates,
+            phase,
+        }) {
+            Ok(_) => log::debug!("sent SeqState {phase:?}"),
+            Err(error) => log::error!("could not send SeqState event: {}", error),
+        }
+    }
 }
 
 use kanata_keyberon::key_code::KeyCode::*;

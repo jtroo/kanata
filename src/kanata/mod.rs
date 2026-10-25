@@ -81,7 +81,7 @@ use kanata_parser::cfg::list_actions::*;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
 pub use kanata_parser::keys::*;
-use kanata_tcp_protocol::ServerMessage;
+use kanata_tcp_protocol::{SeqPhase, ServerMessage};
 
 mod clipboard;
 use clipboard::*;
@@ -1115,7 +1115,7 @@ impl Kanata {
         self.handle_move_mouse()?;
         self.handle_gamepad_edges()?;
         self.handle_gamepad_motion()?;
-        self.tick_sequence_state()?;
+        self.tick_sequence_state(_tx)?;
         self.tick_idle_timeout();
         self.tick_physical_idle_timeout();
         self.macro_on_press_cancel_duration = self.macro_on_press_cancel_duration.saturating_sub(1);
@@ -1359,11 +1359,17 @@ impl Kanata {
         Ok(())
     }
 
-    fn tick_sequence_state(&mut self) -> Result<()> {
+    fn tick_sequence_state(&mut self, tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         if let Some(state) = self.sequence_state.get_active() {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
+                notify_seq_state(
+                    tx,
+                    SeqPhase::TimedOut,
+                    seq_key_names(&state.sequence),
+                    Vec::new(),
+                );
                 cancel_sequence(state, &mut self.kbd_out)?;
             }
         }
@@ -1668,6 +1674,7 @@ impl Kanata {
                     &self.sequences,
                     self.sequence_backtrack_modcancel,
                     layout,
+                    _tx,
                 )?;
             } else {
                 log::debug!("key press     {:?}", k);
@@ -1977,6 +1984,12 @@ impl Kanata {
                     CustomAction::SequenceCancel => {
                         if let Some(state) = self.sequence_state.get_active() {
                             log::debug!("pressed cancel sequence key");
+                            notify_seq_state(
+                                _tx,
+                                SeqPhase::Cancelled,
+                                seq_key_names(&state.sequence),
+                                Vec::new(),
+                            );
                             cancel_sequence(state, &mut self.kbd_out)?;
                         }
                     }
@@ -1984,9 +1997,21 @@ impl Kanata {
                         if self.sequence_state.is_inactive() {
                             log::debug!("entering sequence mode");
                             self.sequence_state.activate(*input_mode, *timeout);
+                            notify_seq_state(
+                                _tx,
+                                SeqPhase::Started,
+                                String::new(),
+                                seq_candidates_string(&self.sequences, &[]),
+                            );
                         } else if *input_mode == SequenceInputMode::HiddenSuppressed {
                             log::debug!("retriggering sequence mode");
                             self.sequence_state.activate(*input_mode, *timeout);
+                            notify_seq_state(
+                                _tx,
+                                SeqPhase::Started,
+                                String::new(),
+                                seq_candidates_string(&self.sequences, &[]),
+                            );
                         }
                     }
                     CustomAction::SequenceNoerase(..) => {}

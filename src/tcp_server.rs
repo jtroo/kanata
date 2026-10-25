@@ -326,6 +326,7 @@ impl TcpServer {
                                                     "layer-change".to_string(),
                                                     "hold-activated".to_string(),
                                                     "tap-activated".to_string(),
+                                                    "seq-state".to_string(),
                                                     "current-layer-name".to_string(),
                                                     "current-layer-info".to_string(),
                                                     "fake-key".to_string(),
