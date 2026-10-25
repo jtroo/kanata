@@ -66,6 +66,7 @@ use kanata_keyberon::action::ReleasableState;
 use kanata_keyberon::key_code::*;
 use kanata_keyberon::layout::{CustomEvent, Event, Layout, State};
 
+use std::cell::RefCell;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time;
@@ -206,6 +207,9 @@ pub struct Kanata {
     gamepad_moving: bool,
     /// Whether a debounced controller threshold crossing is waiting to settle.
     gamepad_debounce_pending: bool,
+    /// Reusable allocation for accumulating edge triggers during `tick` calls,
+    /// for later processing.
+    pub(crate) gamepad_triggered_edges: Vec<kanata_parser::gamepad::PadEdge>,
     /// The user configuration for backtracking to find valid sequences. See
     /// <../../docs/sequence-adding-chords-ideas.md> for more info.
     pub sequence_backtrack_modcancel: bool,
@@ -501,6 +505,7 @@ impl Kanata {
             gamepad_accumulator: Default::default(),
             gamepad_moving: false,
             gamepad_debounce_pending: false,
+            gamepad_triggered_edges: Vec::new(),
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
@@ -665,6 +670,7 @@ impl Kanata {
             gamepad_accumulator: Default::default(),
             gamepad_moving: false,
             gamepad_debounce_pending: false,
+            gamepad_triggered_edges: Vec::new(),
             sequence_backtrack_modcancel: cfg.options.sequence_backtrack_modcancel,
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
@@ -855,11 +861,10 @@ impl Kanata {
             self.gamepad_accumulator.reset();
             self.gamepad_moving = false;
             self.gamepad_debounce_pending = false;
-            let mut edges = Vec::new();
+            let edges = &mut self.gamepad_triggered_edges;
+            edges.clear();
             match (&mut self.gamepad, self.gamepad_config) {
-                (Some(gamepad), config) => {
-                    gamepad.reconfigure(config.unwrap_or_default(), &mut edges)
-                }
+                (Some(gamepad), config) => gamepad.reconfigure(config.unwrap_or_default(), edges),
                 // Adding controller input to a running instance needs the
                 // channel that only startup has, so it takes a restart.
                 (None, Some(_)) => log::warn!(
@@ -868,7 +873,7 @@ impl Kanata {
                 ),
                 (None, None) => {}
             }
-            self.apply_gamepad_edges(&edges)?;
+            self.apply_gamepad_edges()?;
         }
         #[cfg(any(target_os = "linux", target_os = "android"))]
         Kanata::set_repeat_rate(cfg.options.linux_opts.linux_x11_repeat_delay_rate)?;
@@ -1183,13 +1188,15 @@ impl Kanata {
             self.gamepad_debounce_pending = false;
             return Ok(());
         };
-        let mut edges = Vec::new();
-        gamepad.tick(1, &mut edges);
+        let edges = &mut self.gamepad_triggered_edges;
+        edges.clear();
+        gamepad.tick(1, edges);
         self.gamepad_debounce_pending = gamepad.has_pending();
-        self.apply_gamepad_edges(&edges)
+        self.apply_gamepad_edges()
     }
 
     /// Feed edges a controller produced into the processing loop.
+    /// Reads edges from `self.gamepad_triggered_edges`.
     ///
     /// For the callers that already run *on* the processing thread: a live
     /// reload and a state clean. They hand the events straight to
@@ -1200,16 +1207,19 @@ impl Kanata {
     /// The controller thread cannot use this — it is a different thread — and
     /// sends `KeyEvent`s down the channel instead. Both paths pass through the
     /// same `defsrc` gate, and neither holds a lock across the delivery.
-    pub(crate) fn apply_gamepad_edges(
-        &mut self,
-        edges: &[kanata_parser::gamepad::PadEdge],
-    ) -> Result<()> {
-        let mut events = Vec::new();
-        crate::gamepad::gate_on_defsrc(edges, &mut events);
-        for event in events {
-            self.handle_input_event(&event)?;
+    pub(crate) fn apply_gamepad_edges(&mut self) -> Result<()> {
+        thread_local! {
+            static EVENT_BUFFER: RefCell<Vec<KeyEvent>> = const { RefCell::new(vec![]) };
         }
-        Ok(())
+        EVENT_BUFFER.with_borrow_mut(|events| {
+            events.clear();
+
+            crate::gamepad::gate_on_defsrc(&self.gamepad_triggered_edges, events);
+            for event in events.iter() {
+                self.handle_input_event(event)?;
+            }
+            Ok(())
+        })
     }
 
     /// Start controller input handling if the configuration maps a controller

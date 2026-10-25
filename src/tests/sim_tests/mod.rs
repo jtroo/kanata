@@ -110,9 +110,10 @@ fn apply_pad_analog(k: &mut Kanata, spec: &str) {
         handle.connect(SIM_PAD, Default::default());
         handle
     });
-    let mut edges = Vec::new();
-    gamepad.feed(SIM_PAD, input, &mut edges);
-    k.apply_gamepad_edges(&edges)
+    let edges = &mut k.gamepad_triggered_edges;
+    edges.clear();
+    gamepad.feed(SIM_PAD, input, edges);
+    k.apply_gamepad_edges()
         .expect("controller edges apply fine");
 }
 
