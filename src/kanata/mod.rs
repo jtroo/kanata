@@ -2113,6 +2113,12 @@ impl Kanata {
                     CustomAction::FakeKeyReleaseAll => {
                         log::debug!("releasing all virtual keys");
                         release_all_fake_keys(layout, &mut self.vkeys_to_release);
+                        // Forget pending hold-for-duration releases of the released virtual keys,
+                        // so that a later hold-for-duration presses them again.
+                        let released = &self.vkeys_to_release;
+                        self.vkeys_pending_release.retain(|coord, _| {
+                            coord.x != FAKE_KEY_ROW || released.binary_search(&coord.y).is_err()
+                        });
                     }
                     CustomAction::FakeKeyOnRelease { .. }
                     | CustomAction::DelayOnRelease(_)
@@ -3205,7 +3211,7 @@ pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
 }
 
 /// Release every virtual key that currently has an active state in the layout.
-/// `pressed` is used as buffer space.
+/// `pressed` is used as buffer space. It is left holding the sorted released virtual key indices.
 fn release_all_fake_keys<'a, const C: usize, const R: usize, T>(
     layout: &mut Layout<'a, C, R, T>,
     pressed: &mut Vec<u16>,
