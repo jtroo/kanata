@@ -133,6 +133,11 @@ impl Default for CfgOptionsGui {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct CfgTcpOptions {
+    pub danger_tcp_allow_keylogging: bool,
+}
+
 #[derive(Debug)]
 pub struct CfgOptions {
     pub process_unmapped_keys: bool,
@@ -141,6 +146,7 @@ pub struct CfgOptions {
     pub allow_hardware_repeat: bool,
     pub start_alias: Option<String>,
     pub enable_cmd: bool,
+    pub tcp_opts: CfgTcpOptions,
     pub sequence_timeout: u16,
     pub sequence_input_mode: SequenceInputMode,
     pub sequence_backtrack_modcancel: bool,
@@ -190,6 +196,7 @@ impl Default for CfgOptions {
             allow_hardware_repeat: true,
             start_alias: None,
             enable_cmd: false,
+            tcp_opts: Default::default(),
             sequence_timeout: 1000,
             sequence_input_mode: SequenceInputMode::HiddenSuppressed,
             sequence_backtrack_modcancel: true,
@@ -865,6 +872,10 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         cfg.start_alias = parse_defcfg_val_string(val, label)?
                     }
                     "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, label)?,
+                    "danger-tcp-allow-keylogging" => {
+                        cfg.tcp_opts.danger_tcp_allow_keylogging =
+                            parse_defcfg_val_bool(val, label)?
+                    }
                     "sequence-backtrack-modcancel" => {
                         cfg.sequence_backtrack_modcancel = parse_defcfg_val_bool(val, label)?
                     }

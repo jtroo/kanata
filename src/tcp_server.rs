@@ -18,7 +18,59 @@ use std::io::Write;
 use std::net::{TcpListener, TcpStream};
 
 #[cfg(feature = "tcp_server")]
-pub type Connections = Arc<Mutex<HashMap<String, TcpStream>>>;
+const LAYER_CHANGE_SUBSCRIPTION: u8 = 1 << 0;
+#[cfg(feature = "tcp_server")]
+const HOLD_ACTIVATED_SUBSCRIPTION: u8 = 1 << 1;
+#[cfg(feature = "tcp_server")]
+const TAP_ACTIVATED_SUBSCRIPTION: u8 = 1 << 2;
+
+#[cfg(feature = "tcp_server")]
+pub struct Connection {
+    pub stream: TcpStream,
+    subscriptions: u8,
+}
+
+#[cfg(feature = "tcp_server")]
+impl Connection {
+    fn new(stream: TcpStream) -> Self {
+        Self {
+            stream,
+            subscriptions: LAYER_CHANGE_SUBSCRIPTION,
+        }
+    }
+
+    fn set_subscriptions(&mut self, options: &[String]) -> Result<(), String> {
+        let mut subscriptions = 0;
+        for option in options {
+            subscriptions |= match option.as_str() {
+                LAYER_CHANGE => LAYER_CHANGE_SUBSCRIPTION,
+                HOLD_ACTIVATED => HOLD_ACTIVATED_SUBSCRIPTION,
+                TAP_ACTIVATED => TAP_ACTIVATED_SUBSCRIPTION,
+                _ => {
+                    return Err(format!(
+                        "unknown subscription option {option:?}; valid options: {}",
+                        VALID_SUBSCRIBE_OPTIONS.join(", ")
+                    ));
+                }
+            };
+        }
+        self.subscriptions = subscriptions;
+        Ok(())
+    }
+
+    pub fn is_subscribed_to(&self, message: &ServerMessage) -> bool {
+        let subscription = match message {
+            ServerMessage::LayerChange { .. } => LAYER_CHANGE_SUBSCRIPTION,
+            ServerMessage::HoldActivated { .. } => HOLD_ACTIVATED_SUBSCRIPTION,
+            ServerMessage::TapActivated { .. } => TAP_ACTIVATED_SUBSCRIPTION,
+            _ => return false,
+        };
+        self.subscriptions & subscription != 0
+    }
+}
+
+#[cfg(feature = "tcp_server")]
+pub type Connections = Arc<Mutex<HashMap<String, Connection>>>;
 
 #[cfg(not(feature = "tcp_server"))]
 pub type Connections = ();
@@ -181,9 +233,11 @@ impl TcpServer {
 
                         // Cloning needs a new file descriptor, so it fails when the process is
                         // out of them. Drop this client instead of panicking the accept thread.
-                        let (notifier, reader_stream) =
+                        let (writer_stream, reader_stream) =
                             match (stream.try_clone(), stream.try_clone()) {
-                                (Ok(notifier), Ok(reader_stream)) => (notifier, reader_stream),
+                                (Ok(writer_stream), Ok(reader_stream)) => {
+                                    (writer_stream, reader_stream)
+                                }
                                 (Err(e), _) | (_, Err(e)) => {
                                     log::error!(
                                         "failed to clone stream, dropping client {addr}: {e:?}"
@@ -191,7 +245,9 @@ impl TcpServer {
                                     continue;
                                 }
                             };
-                        connections.lock().insert(addr.clone(), notifier);
+                        connections
+                            .lock()
+                            .insert(addr.clone(), Connection::new(writer_stream));
                         let reader = serde_json::Deserializer::from_reader(reader_stream)
                             .into_iter::<ClientMessage>();
 
@@ -206,6 +262,27 @@ impl TcpServer {
                                     Ok(event) => {
                                         log::debug!("tcp server received command: {:?}", event);
                                         match event {
+                                            ClientMessage::Subscribe(options) => {
+                                                let result = connections
+                                                    .lock()
+                                                    .get_mut(&addr)
+                                                    .ok_or_else(|| {
+                                                        "connection was removed".to_string()
+                                                    })
+                                                    .and_then(|connection| {
+                                                        connection.set_subscriptions(&options)
+                                                    });
+                                                if let Err(msg) = result
+                                                    && !send_response(
+                                                        &mut stream,
+                                                        ServerResponse::Error { msg },
+                                                        &connections,
+                                                        &addr,
+                                                    )
+                                                {
+                                                    break;
+                                                }
+                                            }
                                             ClientMessage::ChangeLayer { new } => {
                                                 kanata.lock().change_layer(new);
                                             }
@@ -337,6 +414,7 @@ impl TcpServer {
                                                     "current-layer-info".to_string(),
                                                     "fake-key".to_string(),
                                                     "set-mouse".to_string(),
+                                                    "subscribe".to_string(),
                                                 ];
                                                 let msg = ServerMessage::HelloOk {
                                                     version,

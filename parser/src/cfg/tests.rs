@@ -1691,6 +1691,34 @@ fn parse_defcfg_linux_output_bus() {
 }
 
 #[test]
+fn parse_defcfg_danger_tcp_allow_keylogging() {
+    let default_source = r#"
+(defsrc a)
+(deflayer base a)
+"#;
+    assert!(
+        !parse_cfg(default_source)
+            .expect("parses")
+            .options
+            .tcp_opts
+            .danger_tcp_allow_keylogging
+    );
+
+    let enabled_source = r#"
+(defcfg danger-tcp-allow-keylogging yes)
+(defsrc a)
+(deflayer base a)
+"#;
+    assert!(
+        parse_cfg(enabled_source)
+            .expect("parses")
+            .options
+            .tcp_opts
+            .danger_tcp_allow_keylogging
+    );
+}
+
+#[test]
 fn parse_unmod() {
     let source = r#"
 (defsrc a b c d e)
