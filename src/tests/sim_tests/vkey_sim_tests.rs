@@ -272,3 +272,118 @@ fn release_all_vkeys() {
     let result = simulate(CFG, "d:d u:d t:10").to_ascii();
     assert_eq!("", result);
 }
+
+#[test]
+fn release_all_vkeys_releases_multi_state_vkey_once() {
+    const CFG: &str = r"
+        (defsrc a b c)
+        (defvirtualkeys
+            vk1 (multi lctl lsft)
+            vk2 lalt)
+        (deflayer base
+            (on-press toggle-vkey vk1)
+            (on-press toggle-vkey vk2)
+            release-all-vkeys
+        )
+    ";
+    // A virtual key with several states is released in a single tick.
+    // Pressing release-all-vkeys again does nothing.
+    let result = simulate(CFG, "d:a u:a t:10 d:c u:c t:10 d:c u:c t:10").to_ascii();
+    assert_eq!("t:2ms dn:LCtrl dn:LShift t:10ms up:LCtrl up:LShift", result);
+    // A virtual key with several states gets a single release event,
+    // so the next virtual key is released one tick later, not two.
+    // Each press only releases what is pressed at that moment.
+    let result = simulate(
+        CFG,
+        "d:a u:a t:10 d:b u:b t:10 d:c u:c t:10 d:b u:b t:10 d:c u:c t:10",
+    )
+    .to_ascii();
+    assert_eq!(
+        "t:2ms dn:LCtrl dn:LShift t:10ms dn:LAlt t:10ms up:LCtrl up:LShift t:1ms up:LAlt \
+         t:9ms dn:LAlt t:10ms up:LAlt",
+        result
+    );
+}
+
+#[test]
+fn release_all_vkeys_in_multi() {
+    const CFG: &str = r"
+        (defsrc a b)
+        (defvirtualkeys
+            vk1 lctl
+            vk2 lsft)
+        (deflayer base
+            (multi release-all-vkeys (on-press press-vkey vk1))
+            (multi x release-all-vkeys (on-press press-vkey vk2))
+        )
+    ";
+    // Release whatever virtual key is active, then press another one,
+    // so that only one of them is active at a time.
+    let result = simulate(CFG, "d:a u:a t:10 d:b t:10 u:b t:10 d:a u:a t:10").to_ascii();
+    assert_eq!(
+        "t:4ms dn:LCtrl t:6ms dn:X t:2ms up:LCtrl t:1ms dn:LShift t:7ms up:X \
+         t:14ms up:LShift t:1ms dn:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn release_all_vkeys_restores_base_layer() {
+    const CFG: &str = r"
+        (defsrc a b c)
+        (defvirtualkeys vk1 (multi lctl (layer-while-held other)))
+        (deflayer base (on-press press-vkey vk1) release-all-vkeys c)
+        (deflayer other _ _ x)
+    ";
+    let result = simulate(CFG, "d:a u:a t:10 d:c u:c t:10 d:b u:b t:10 d:c u:c t:10").to_ascii();
+    assert_eq!(
+        "t:2ms dn:LCtrl t:8ms dn:X t:1ms up:X t:11ms up:LCtrl t:8ms dn:C t:1ms up:C",
+        result
+    );
+}
+
+#[test]
+fn release_all_vkeys_then_hold_for_duration() {
+    const CFG: &str = r"
+        (defsrc a b)
+        (defvirtualkeys vk1 lctl)
+        (deflayer base (hold-for-duration 100 vk1) release-all-vkeys)
+    ";
+    // After release-all-vkeys ends a hold-for-duration early,
+    // the next hold-for-duration presses the virtual key again.
+    let result = simulate(CFG, "d:a u:a t:10 d:b u:b t:10 d:a u:a t:200").to_ascii();
+    assert_eq!(
+        "t:2ms dn:LCtrl t:10ms up:LCtrl t:10ms dn:LCtrl t:98ms up:LCtrl",
+        result
+    );
+}
+
+#[test]
+fn release_all_vkeys_from_own_vkey() {
+    const CFG: &str = r"
+        (defsrc a b c)
+        (defvirtualkeys
+            vk1 lctl
+            vkra (multi lsft release-all-vkeys))
+        (deflayer base
+            (on-press press-vkey vk1)
+            (on-press press-vkey vkra)
+            (on-press tap-vkey vkra)
+        )
+    ";
+    // A virtual key whose action is release-all-vkeys also releases itself,
+    // without looping.
+    let result = simulate(CFG, "d:a u:a t:10 d:b u:b t:10 d:b u:b t:10").to_ascii();
+    assert_eq!(
+        "t:2ms dn:LCtrl t:10ms dn:LShift t:1ms up:LCtrl t:1ms up:LShift \
+         t:8ms dn:LShift t:1ms up:LShift",
+        result
+    );
+    // Tapping it releases the tap first, then the other pressed virtual keys.
+    let result = simulate(CFG, "d:a u:a t:10 d:c u:c t:10 d:c u:c t:10").to_ascii();
+    assert_eq!(
+        "t:2ms dn:LCtrl t:10ms dn:LShift t:1ms up:LShift t:1ms up:LCtrl \
+         t:8ms dn:LShift t:1ms up:LShift",
+        result
+    );
+}
