@@ -165,8 +165,9 @@ pub struct Kanata {
     /// tick. This must only be updated once per tick and must not be modified outside of the one
     /// procedure that updates it.
     pub prev_keys: Vec<KeyCode>,
-    /// Reusable vec (to save on allocations) that stores the virtual keys to release when
-    /// releasing all virtual keys. This can be cleared and reused as buffer space.
+    /// Virtual keys queued for release by release-all-vkeys, in reverse order so that the next
+    /// one is popped from the back. One is released per tick, matching the rate at which the
+    /// layout processes inputs, so that many virtual keys do not overflow its input queue.
     pub vkeys_to_release: Vec<u16>,
     /// Used for printing layer info to the info log when changing layers.
     pub layer_info: Vec<LayerInfo>,
@@ -1114,7 +1115,21 @@ impl Kanata {
         });
     }
 
+    fn tick_queued_vkey_releases(&mut self) {
+        if self.vkeys_to_release.is_empty() {
+            return;
+        }
+        release_next_queued_fake_key(
+            self.layout.bm(),
+            &mut self.vkeys_to_release,
+            &mut self.vkeys_pending_release,
+        );
+    }
+
     fn tick_states(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
+        // Runs before handle_keystate_changes, which releases the first queued virtual key
+        // itself, so that only one release is forwarded per tick.
+        self.tick_queued_vkey_releases();
         self.live_reload_requested |= self.handle_keystate_changes(_tx)?;
         self.handle_scrolling()?;
         self.handle_move_mouse()?;
@@ -2112,13 +2127,14 @@ impl Kanata {
                     }
                     CustomAction::FakeKeyReleaseAll => {
                         log::debug!("releasing all virtual keys");
-                        release_all_fake_keys(layout, &mut self.vkeys_to_release);
-                        // Forget pending hold-for-duration releases of the released virtual keys,
-                        // so that a later hold-for-duration presses them again.
-                        let released = &self.vkeys_to_release;
-                        self.vkeys_pending_release.retain(|coord, _| {
-                            coord.x != FAKE_KEY_ROW || released.binary_search(&coord.y).is_err()
-                        });
+                        queue_release_all_fake_keys(layout, &mut self.vkeys_to_release);
+                        // Release the first one now so that it comes before any press that
+                        // follows in the same action, e.g. in multi.
+                        release_next_queued_fake_key(
+                            layout,
+                            &mut self.vkeys_to_release,
+                            &mut self.vkeys_pending_release,
+                        );
                     }
                     CustomAction::FakeKeyOnRelease { .. }
                     | CustomAction::DelayOnRelease(_)
@@ -2861,6 +2877,7 @@ impl Kanata {
             && self.dynamic_macro_replay_state.is_none()
             && self.caps_word.is_none()
             && self.vkeys_pending_release.is_empty()
+            && self.vkeys_to_release.is_empty()
             && !layout.states.iter().any(|s| {
                 matches!(s, State::SeqCustomPending(_) | State::SeqCustomActive(_))
                     || (pressed_keys_means_not_idle && matches!(s, State::NormalKey { .. }))
@@ -3210,45 +3227,50 @@ pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
     };
 }
 
-/// Release every virtual key that currently has an active state in the layout.
-/// `pressed` is used as buffer space. It is left holding the sorted released virtual key indices.
-fn release_all_fake_keys<'a, const C: usize, const R: usize, T>(
-    layout: &mut Layout<'a, C, R, T>,
-    pressed: &mut Vec<u16>,
+/// Queue every virtual key that currently has an active state in the layout for release.
+/// Anything still queued from an earlier call is replaced.
+fn queue_release_all_fake_keys<'a, const C: usize, const R: usize, T>(
+    layout: &Layout<'a, C, R, T>,
+    vkeys_to_release: &mut Vec<u16>,
 ) where
     T: 'a + std::fmt::Debug + Copy,
 {
-    pressed.clear();
-    pressed.extend(
+    vkeys_to_release.clear();
+    vkeys_to_release.extend(
         layout
             .states
             .iter()
-            .filter_map(|s| state_coord(s).filter(|&(x, _)| x == FAKE_KEY_ROW))
+            .filter_map(|s| s.coord())
+            .filter(|&(x, _)| x == FAKE_KEY_ROW)
             .map(|(_, y)| y),
     );
-    pressed.sort_unstable();
-    pressed.dedup();
-    for &y in pressed.iter() {
-        layout.event(Event::Release(FAKE_KEY_ROW, y));
-    }
+    // Reverse order, so that popping from the back releases the lowest index first.
+    vkeys_to_release.sort_unstable_by(|a, b| b.cmp(a));
+    vkeys_to_release.dedup();
 }
 
-fn state_coord<T>(state: &State<T>) -> Option<(u8, u16)> {
-    match state {
-        State::NormalKey { coord, .. }
-        | State::LayerModifier { coord, .. }
-        | State::Custom { coord, .. }
-        | State::NoOpInput { coord }
-        | State::RepeatingSequence { coord, .. } => Some(*coord),
-        State::FakeKey { .. }
-        | State::SeqCustomPending(_)
-        | State::SeqCustomActive(_)
-        | State::Tombstone => None,
+/// Release the next queued virtual key that is still active. Releases at most one.
+fn release_next_queued_fake_key<'a, const C: usize, const R: usize, T>(
+    layout: &mut Layout<'a, C, R, T>,
+    vkeys_to_release: &mut Vec<u16>,
+    vkeys_pending_release: &mut HashMap<Coord, u16>,
+) where
+    T: 'a + std::fmt::Debug + Copy,
+{
+    while let Some(y) = vkeys_to_release.pop() {
+        if !states_has_coord(&layout.states, FAKE_KEY_ROW, y) {
+            continue;
+        }
+        // Forget a pending hold-for-duration release of this virtual key,
+        // so that a later hold-for-duration presses it again.
+        vkeys_pending_release.remove(&Coord { x: FAKE_KEY_ROW, y });
+        layout.event(Event::Release(FAKE_KEY_ROW, y));
+        return;
     }
 }
 
 fn states_has_coord<T>(states: &[State<T>], x: u8, y: u16) -> bool {
-    states.iter().any(|s| state_coord(s) == Some((x, y)))
+    states.iter().any(|s| s.coord() == Some((x, y)))
 }
 
 #[cfg(all(not(feature = "interception_driver"), target_os = "windows"))]

@@ -387,3 +387,33 @@ fn release_all_vkeys_from_own_vkey() {
         result
     );
 }
+
+#[test]
+fn release_all_vkeys_more_than_input_queue() {
+    // More virtual keys than fit in the layout input queue (32) are all released,
+    // one per tick.
+    let keys: Vec<String> = ('a'..='z')
+        .map(String::from)
+        .chain((1..=14).map(|n| format!("f{n}")))
+        .collect();
+    let vkeys: String = keys.iter().map(|k| format!("vk{k} {k} ")).collect();
+    let actions: String = keys
+        .iter()
+        .map(|k| format!("(on-press press-vkey vk{k}) "))
+        .collect();
+    let cfg = format!(
+        "(defsrc {} f15)
+         (defvirtualkeys {vkeys})
+         (deflayer base {actions} release-all-vkeys)",
+        keys.join(" ")
+    );
+    let presses: String = keys.iter().map(|k| format!("d:{k} u:{k} t:10 ")).collect();
+    let result = simulate(&cfg, &format!("{presses}d:f15 u:f15 t:100")).to_ascii();
+    let releases = result.split("t:10ms ").last().unwrap();
+    let expected: Vec<String> = keys
+        .iter()
+        .map(|k| format!("up:{}", k.to_uppercase()))
+        .collect();
+    assert_eq!(keys.len(), 40);
+    assert_eq!(releases, expected.join(" t:1ms "));
+}
