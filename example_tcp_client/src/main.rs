@@ -53,8 +53,11 @@ fn print_usage() {
     You can also use any other software to connect to kanata over TCP.\n\
     The protocol is plaintext JSON with newline terminated messages.
 \n\
-    Layer change notifications from kanata look like:\n\
-    {}
+Layer change notifications from kanata look like:\n\
+    {}\n\
+\n\
+    Sequence state notifications from kanata look like:\n\
+    {}\n\
 \n\
     Requests to change kanata's layer look like:\n\
     {}
@@ -72,6 +75,12 @@ fn print_usage() {
     ",
         serde_json::to_string(&ServerMessage::LayerChange {
             new: "newly-changed-to-layer".into()
+        })
+        .expect("deserializable"),
+        serde_json::to_string(&ServerMessage::SeqState {
+            prefix: "g".into(),
+            candidates: vec!["g r".into()],
+            phase: SeqPhase::Advanced,
         })
         .expect("deserializable"),
         serde_json::to_string(&ClientMessage::ChangeLayer {
@@ -250,6 +259,15 @@ fn read_from_kanata(s: TcpStream) {
         match parsed_msg {
             ServerMessage::LayerChange { new } => {
                 log::info!("reader: kanata changed layers to \"{new}\"");
+            }
+            ServerMessage::SeqState {
+                prefix,
+                candidates,
+                phase,
+            } => {
+                log::info!(
+                    "reader: sequence {phase:?}: prefix \"{prefix}\" candidates {candidates:?}"
+                );
             }
             msg => {
                 log::info!("got msg: {msg:?}");

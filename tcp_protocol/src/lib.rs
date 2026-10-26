@@ -58,6 +58,35 @@ pub enum ServerMessage {
     TapActivated {
         key: String,
     },
+    /// Sent when leader-sequence (`sldr`/`defseq`) state changes, on every
+    /// transition: arming, each key while armed, completion, cancellation and
+    /// timeout. Lets clients render sequence progress (e.g. a leader menu).
+    /// Introduced in v1.13.0; advertised in the `Hello` capabilities as
+    /// `seq-state`.
+    SeqState {
+        /// Current matched prefix as space-joined key names; empty on start.
+        prefix: String,
+        /// Full defseq sequences (space-joined key names) that complete the
+        /// current prefix; empty once the sequence is no longer in progress.
+        candidates: Vec<String>,
+        phase: SeqPhase,
+    },
+}
+
+/// Lifecycle phase carried by `ServerMessage::SeqState`.
+/// Introduced in v1.13.0.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SeqPhase {
+    /// Sequence mode was armed by a sequence leader action.
+    Started,
+    /// A sequence key was added and the prefix is still valid.
+    Advanced,
+    /// A defseq matched and its action fired.
+    Completed,
+    /// The sequence was cancelled (invalid keys or a cancel action).
+    Cancelled,
+    /// The sequence timed out (`sequence-timeout` elapsed with no match).
+    TimedOut,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -279,5 +308,47 @@ mod tests {
         };
         let json = serde_json::to_string(&msg).unwrap();
         assert_eq!(json, r#"{"TapActivated":{"key":"a"}}"#);
+    }
+
+    #[test]
+    fn test_seq_state_json_format() {
+        let msg = ServerMessage::SeqState {
+            prefix: "g".to_string(),
+            candidates: vec!["g r".to_string()],
+            phase: SeqPhase::Advanced,
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(
+            json,
+            r#"{"SeqState":{"prefix":"g","candidates":["g r"],"phase":"Advanced"}}"#
+        );
+        // Round-trip.
+        let parsed: ServerMessage = serde_json::from_str(&json).unwrap();
+        match parsed {
+            ServerMessage::SeqState {
+                prefix,
+                candidates,
+                phase,
+            } => {
+                assert_eq!(prefix, "g");
+                assert_eq!(candidates, vec!["g r".to_string()]);
+                assert_eq!(phase, SeqPhase::Advanced);
+            }
+            _ => panic!("Expected SeqState"),
+        }
+    }
+
+    #[test]
+    fn test_seq_state_started_empty_prefix() {
+        let msg = ServerMessage::SeqState {
+            prefix: String::new(),
+            candidates: vec![],
+            phase: SeqPhase::Started,
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(
+            json,
+            r#"{"SeqState":{"prefix":"","candidates":[],"phase":"Started"}}"#
+        );
     }
 }

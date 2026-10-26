@@ -6139,6 +6139,9 @@ These are sent automatically when events occur:
 
 | `{"TapActivated":{"key":"a"}}`
 | Sent when a tap-hold key triggers its tap action. The `key` field is the physical key name.
+
+| `{"SeqState":{"prefix":"g","candidates":["g r"],"phase":"Advanced"}}`
+| Sent when leader-sequence state changes (since v1.13.0, advertised in `Hello` capabilities as `seq-state`): on arming, on each key while armed, on completion, cancellation and timeout. `phase` is one of `Started`, `Advanced`, `Completed`, `Cancelled`, `TimedOut`; `prefix` is the matched sequence so far (space-joined key names) and `candidates` lists the `defseq` sequences that would complete it.
 |===
 
 ===== Query Responses
