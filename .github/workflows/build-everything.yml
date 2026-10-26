@@ -2,6 +2,10 @@ name: build-everything
 
 on: workflow_dispatch
 
+permissions:
+  actions: write
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-Dwarnings"

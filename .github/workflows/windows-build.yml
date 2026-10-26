@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   workflow_call:
 
+permissions:
+  actions: write
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 

@@ -4,6 +4,10 @@ on:
   workflow_dispatch:
   workflow_call:
 
+permissions:
+  actions: write
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -31,7 +35,7 @@ jobs:
           path: |
             artifacts-x64/kanata_linux_x64
             artifacts-x64/kanata_linux_cmd_allowed_x64
-            
+
   build-linux-arm64:
     runs-on: ubuntu-26.04-arm
     steps:
