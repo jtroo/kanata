@@ -595,6 +595,24 @@ fn parse_setmouse_wrong_param_count_names_setmouse() {
 }
 
 #[test]
+fn parse_fakekey_delay_wrong_param_count_is_an_error() {
+    for action in [
+        "(on-press-fakekey-delay)",
+        "(on-press-fakekey-delay 10 20)",
+        "(on-release-fakekey-delay)",
+        "(on-release-fakekey-delay 10 20)",
+    ] {
+        let err = parse_cfg(&format!("(defsrc a) (deflayer base {action})"))
+            .expect_err("fakekey delay with wrong parameter count should be rejected");
+        assert!(
+            err.msg.contains("expects a single number"),
+            "{action}: real e: {}",
+            err.msg
+        );
+    }
+}
+
+#[test]
 fn recursive_multi_is_flattened() {
     macro_rules! atom {
         ($e:expr) => {

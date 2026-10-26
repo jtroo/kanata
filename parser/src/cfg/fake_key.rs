@@ -248,6 +248,9 @@ fn parse_delay(
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
     const ERR_MSG: &str = "delay expects a single number (ms, 0-65535)";
+    if ac_params.len() != 1 {
+        bail!("{ERR_MSG}, found {}", ac_params.len());
+    }
     let delay = ac_params[0]
         .atom(s.vars())
         .map(str::parse::<u16>)
