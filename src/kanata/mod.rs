@@ -165,6 +165,9 @@ pub struct Kanata {
     /// tick. This must only be updated once per tick and must not be modified outside of the one
     /// procedure that updates it.
     pub prev_keys: Vec<KeyCode>,
+    /// Reusable vec (to save on allocations) that stores the virtual keys to release when
+    /// releasing all virtual keys. This can be cleared and reused as buffer space.
+    pub vkeys_to_release: Vec<u16>,
     /// Used for printing layer info to the info log when changing layers.
     pub layer_info: Vec<LayerInfo>,
     /// Used to track when a layer change occurs.
@@ -489,6 +492,7 @@ impl Kanata {
             layer_info: cfg.layer_info,
             cur_keys: Vec::new(),
             prev_keys: Vec::new(),
+            vkeys_to_release: Vec::new(),
             prev_layer: 0,
             scroll_state: None,
             hscroll_state: None,
@@ -653,6 +657,7 @@ impl Kanata {
             layer_info: cfg.layer_info,
             cur_keys: Vec::new(),
             prev_keys: Vec::new(),
+            vkeys_to_release: Vec::new(),
             prev_layer: 0,
             scroll_state: None,
             hscroll_state: None,
@@ -2107,7 +2112,7 @@ impl Kanata {
                     }
                     CustomAction::FakeKeyReleaseAll => {
                         log::debug!("releasing all virtual keys");
-                        release_all_fake_keys(layout);
+                        release_all_fake_keys(layout, &mut self.vkeys_to_release);
                     }
                     CustomAction::FakeKeyOnRelease { .. }
                     | CustomAction::DelayOnRelease(_)
@@ -3200,19 +3205,24 @@ pub fn handle_fakekey_action<'a, const C: usize, const R: usize, T>(
 }
 
 /// Release every virtual key that currently has an active state in the layout.
-fn release_all_fake_keys<'a, const C: usize, const R: usize, T>(layout: &mut Layout<'a, C, R, T>)
-where
+/// `pressed` is used as buffer space.
+fn release_all_fake_keys<'a, const C: usize, const R: usize, T>(
+    layout: &mut Layout<'a, C, R, T>,
+    pressed: &mut Vec<u16>,
+) where
     T: 'a + std::fmt::Debug + Copy,
 {
-    let mut pressed: Vec<u16> = layout
-        .states
-        .iter()
-        .filter_map(|s| state_coord(s).filter(|&(x, _)| x == FAKE_KEY_ROW))
-        .map(|(_, y)| y)
-        .collect();
+    pressed.clear();
+    pressed.extend(
+        layout
+            .states
+            .iter()
+            .filter_map(|s| state_coord(s).filter(|&(x, _)| x == FAKE_KEY_ROW))
+            .map(|(_, y)| y),
+    );
     pressed.sort_unstable();
     pressed.dedup();
-    for y in pressed {
+    for &y in pressed.iter() {
         layout.event(Event::Release(FAKE_KEY_ROW, y));
     }
 }
