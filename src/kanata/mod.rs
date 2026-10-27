@@ -794,6 +794,7 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(k)))
     }
 
+    #[cfg(feature = "tcp_server")]
     pub fn allows_keylogging(&self) -> bool {
         self.danger_tcp_allow_keylogging
     }
