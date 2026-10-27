@@ -873,8 +873,11 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                     }
                     "danger-enable-cmd" => cfg.enable_cmd = parse_defcfg_val_bool(val, label)?,
                     "danger-tcp-allow-keylogging" => {
-                        cfg.tcp_opts.danger_tcp_allow_keylogging =
-                            parse_defcfg_val_bool(val, label)?
+                        let allowed = parse_defcfg_val_bool(val, label)?;
+                        if allowed {
+                            log::warn!("DANGER! keylogging over TCP is enabled");
+                        }
+                        cfg.tcp_opts.danger_tcp_allow_keylogging = allowed;
                     }
                     "sequence-backtrack-modcancel" => {
                         cfg.sequence_backtrack_modcancel = parse_defcfg_val_bool(val, label)?

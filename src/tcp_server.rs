@@ -263,6 +263,8 @@ impl TcpServer {
                                         log::debug!("tcp server received command: {:?}", event);
                                         match event {
                                             ClientMessage::Subscribe(options) => {
+                                                let allow_keylogging =
+                                                    kanata.lock().allows_keylogging();
                                                 let result = connections
                                                     .lock()
                                                     .get_mut(&addr)
@@ -270,6 +272,10 @@ impl TcpServer {
                                                         "connection was removed".to_string()
                                                     })
                                                     .and_then(|connection| {
+                                                        if !allow_keylogging && options.iter().any(|s| kanata_tcp_protocol::subscribe_option_is_keylogging(s)) {
+                                                            return Err(format!("Subscribed with options {:?} while danger-tcp-allow-keylogging is false.\n\
+                                                                               The kanata config must set the option to true to allow this subscribe command.", options));
+                                                        }
                                                         connection.set_subscriptions(&options)
                                                     });
                                                 if let Err(msg) = result

@@ -19,12 +19,22 @@ fn notification_test_client() -> (
     SyncSender<ServerMessage>,
     Receiver<crate::oskbd::KeyEvent>,
 ) {
-    let k = Kanata::new_from_str(
-        "(defsrc a)
+    notification_test_client_with_cfg(
+        "(defcfg danger-tcp-allow-keylogging yes)
+         (defsrc a)
          (deflayer base a)",
-        Default::default(),
     )
-    .expect("failed to parse cfg");
+}
+
+fn notification_test_client_with_cfg(
+    cfg: &str,
+) -> (
+    TcpStream,
+    BufReader<TcpStream>,
+    SyncSender<ServerMessage>,
+    Receiver<crate::oskbd::KeyEvent>,
+) {
+    let k = Kanata::new_from_str(cfg, Default::default()).expect("failed to parse cfg");
     let address = TcpListener::bind("127.0.0.1:0")
         .and_then(|l| l.local_addr())
         .expect("free port");
@@ -197,5 +207,31 @@ fn tcp_notifications_can_all_be_enabled() {
             line.contains(notification),
             "expected {notification}, got {line}"
         );
+    }
+}
+
+#[test]
+fn tcp_notifications_denied_with_keylogging_disabled() {
+    let (mut stream, mut reader, _notification_tx, _wakeup_rx) = notification_test_client_with_cfg(
+        "(defsrc a)
+          (deflayer base a)",
+    );
+    let keylogging_opts = &[HOLD_ACTIVATED, TAP_ACTIVATED];
+    for opt in keylogging_opts {
+        let subscribe = ClientMessage::Subscribe(vec![opt.to_string()]);
+        stream
+            .write_all(&serde_json::to_vec(&subscribe).expect("serialize subscribe"))
+            .expect("send subscribe");
+        stream.write_all(b"\n").expect("terminate subscribe");
+        let mut line = String::new();
+        reader.read_line(&mut line).expect("current layer response");
+        assert!(
+            line.contains(&format!(
+                "Subscribed with options [\\\"{}\\\"] while danger-tcp-allow-keylogging is false",
+                opt
+            )),
+            "unexpected response: {line}"
+        );
+        line.clear();
     }
 }

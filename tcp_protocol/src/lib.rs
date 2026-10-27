@@ -65,6 +65,12 @@ pub enum ServerMessage {
     },
 }
 
+/// Returns true if the subscribe option logs user typing over TCP
+/// and returns false otherwise.
+pub fn subscribe_option_is_keylogging(opt: &str) -> bool {
+    matches!(opt, TAP_ACTIVATED | HOLD_ACTIVATED)
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "status")]
 pub enum ServerResponse {

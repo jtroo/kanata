@@ -794,6 +794,10 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(k)))
     }
 
+    pub fn allows_keylogging(&self) -> bool {
+        self.danger_tcp_allow_keylogging
+    }
+
     pub(crate) fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
