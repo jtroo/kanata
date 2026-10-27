@@ -20,9 +20,10 @@ pub(crate) fn parse_layer_indexes(
     expected_len: usize,
     vars: &HashMap<String, SExpr>,
     _lsp_hints: &mut LspHints,
-) -> Result<(LayerIndexes, LayerIcons)> {
+) -> Result<(LayerIndexes, LayerIcons, LayerColors)> {
     let mut layer_indexes = HashMap::default();
-    let mut layer_icons = HashMap::default();
+    let mut layer_icons  = HashMap::default();
+    let mut layer_colors = HashMap::default();
     for (i, expr_type) in exprs.iter().enumerate() {
         let (mut subexprs, expr, do_element_count_check, deflayer_keyword) = match expr_type {
             SpannedLayerExprs::DefsrcMapping(e) => {
@@ -41,10 +42,10 @@ pub(crate) fn parse_layer_indexes(
                 "{deflayer_keyword} requires a layer name after `{deflayer_keyword}` token"
             )
         })?;
-        let (layer_name, _layer_name_span, icon) = {
+        let (layer_name, _layer_name_span, icon, color) = {
             let name = layer_expr.atom(Some(vars));
             match name {
-                Some(name) => (name.to_owned(), layer_expr.span(), None),
+                Some(name) => (name.to_owned(), layer_expr.span(), None, None),
                 None => {
                     // unwrap: this **must** be a list due to atom() call above.
                     let list = layer_expr.list(Some(vars)).unwrap();
@@ -59,8 +60,11 @@ pub(crate) fn parse_layer_indexes(
                     let layer_opts = parse_layer_opts(&list[1..])?;
                     let icon = layer_opts
                         .get(DEFLAYER_ICON[0])
-                        .map(|icon_s| icon_s.trim_atom_quotes().to_owned());
-                    (name.to_owned(), first.span(), icon)
+                        .map(|s| s.trim_atom_quotes().to_owned());
+                    let color = layer_opts
+                        .get(DEFLAYER_COLOR[0])
+                        .map(|s| s.trim_atom_quotes().to_owned());
+                    (name.to_owned(), first.span(), icon, color)
                 }
             }
         };
@@ -113,10 +117,11 @@ pub(crate) fn parse_layer_indexes(
             .insert(layer_name.clone(), _layer_name_span.clone());
 
         layer_indexes.insert(layer_name.clone(), i);
-        layer_icons.insert(layer_name, icon);
+        layer_icons.insert(layer_name.clone(), icon);
+        layer_colors.insert(layer_name, color);
     }
 
-    Ok((layer_indexes, layer_icons))
+    Ok((layer_indexes, layer_icons, layer_colors))
 }
 
 pub(crate) fn parse_layers(

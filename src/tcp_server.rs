@@ -162,7 +162,9 @@ impl TcpServer {
                             );
                             if let Err(e) = stream.write(
                                 &ServerMessage::LayerChange {
-                                    new: k.layer_info[k.layout.b().current_layer()].name.clone(),
+                                    new:   k.layer_info[k.layout.b().current_layer()].name.clone(),
+                                    color: k.layer_info[k.layout.b().current_layer()].color.clone(),
+                                    icon:  k.layer_info[k.layout.b().current_layer()].icon.clone(),
                                 }
                                 .as_bytes(),
                             ) {
@@ -296,10 +298,10 @@ impl TcpServer {
                                                 let mut k = kanata.lock();
                                                 let cur_layer = k.layout.bm().current_layer();
                                                 let msg = ServerMessage::CurrentLayerInfo {
-                                                    name: k.layer_info[cur_layer].name.clone(),
-                                                    cfg_text: k.layer_info[cur_layer]
-                                                        .cfg_text
-                                                        .clone(),
+                                                    name:     k.layer_info[cur_layer].name.clone(),
+                                                    cfg_text: k.layer_info[cur_layer].cfg_text.clone(),
+                                                    color:    k.layer_info[cur_layer].color.clone(),
+                                                    icon:     k.layer_info[cur_layer].icon.clone(),
                                                 };
                                                 drop(k);
                                                 match stream.write_all(&msg.as_bytes()) {
@@ -313,7 +315,9 @@ impl TcpServer {
                                                 let mut k = kanata.lock();
                                                 let cur_layer = k.layout.bm().current_layer();
                                                 let msg = ServerMessage::CurrentLayerName {
-                                                    name: k.layer_info[cur_layer].name.clone(),
+                                                    name:  k.layer_info[cur_layer].name.clone(),
+                                                    color: k.layer_info[cur_layer].color.clone(),
+                                                    icon:  k.layer_info[cur_layer].icon.clone(),
                                                 };
                                                 drop(k);
                                                 match stream.write_all(&msg.as_bytes()) {
