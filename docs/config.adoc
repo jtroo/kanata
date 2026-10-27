@@ -6300,6 +6300,11 @@ Release the virtual key. If it is not already pressed, this does nothing.
 * `toggle-virtualkey  | toggle-vkey`:
 Press the virtual key if it is not already pressed, otherwise release it.
 
+To release every virtual key that is currently pressed,
+for example after toggling several of them,
+use the standalone action `release-all-virtualkeys` or its short form `release-all-vkeys`.
+Virtual keys that are not pressed are left alone.
+
 A virtual key can be defined in a `defvirtualkeys` configuration entry.
 Configuring this entry is similar to `+defalias+`,
 but you cannot make use of aliases inside to shorten an action.
@@ -6346,10 +6351,11 @@ to only start based on having all keyboard keys be released.
 
   isf (on-idle 1000 tap-vkey sft)
   hfd (hold-for-duration 1000 met)
+  rav release-all-vkeys
 )
 
 (deflayer use-virtual-keys
-  @psf @rsf @tal @mac a s d f @isf @hfd
+  @psf @rsf @tal @mac a s d f @isf @hfd @rav
 )
 ----
 

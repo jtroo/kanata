@@ -29,6 +29,8 @@ pub enum CustomAction {
     FakeKeyOnIdle(FakeKeyOnIdle),
     FakeKeyOnPhysicalIdle(FakeKeyOnIdle),
     FakeKeyHoldForDuration(FakeKeyHoldForDuration),
+    /// Release every virtual key that is currently pressed.
+    FakeKeyReleaseAll,
     Delay(u16),
     DelayOnRelease(u16),
     MWheel {
