@@ -343,6 +343,8 @@ pub struct Kanata {
     pub max_key_timing_check: u16,
     #[cfg(feature = "tcp_server")]
     tcp_server_address: Option<SocketAddrWrapper>,
+    #[cfg(feature = "tcp_server")]
+    danger_tcp_allow_keylogging: bool,
     #[cfg(all(target_os = "windows", feature = "gui"))]
     /// Various GUI-related options.
     pub gui_opts: CfgOptionsGui,
@@ -593,6 +595,8 @@ impl Kanata {
             input_devices: cfg.input_devices,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: args.tcp_server_address.clone(),
+            #[cfg(feature = "tcp_server")]
+            danger_tcp_allow_keylogging: cfg.options.tcp_opts.danger_tcp_allow_keylogging,
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
@@ -759,6 +763,8 @@ impl Kanata {
             input_devices: cfg.input_devices,
             #[cfg(feature = "tcp_server")]
             tcp_server_address: None,
+            #[cfg(feature = "tcp_server")]
+            danger_tcp_allow_keylogging: cfg.options.tcp_opts.danger_tcp_allow_keylogging,
             #[cfg(all(target_os = "windows", feature = "gui"))]
             gui_opts: cfg.options.gui_opts,
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
@@ -794,6 +800,11 @@ impl Kanata {
         Ok(Arc::new(Mutex::new(k)))
     }
 
+    #[cfg(feature = "tcp_server")]
+    pub fn allows_keylogging(&self) -> bool {
+        self.danger_tcp_allow_keylogging
+    }
+
     pub(crate) fn do_live_reload(&mut self, _tx: &Option<Sender<ServerMessage>>) -> Result<()> {
         let cfg = match cfg::new_from_file(&self.cfg_paths[self.cur_cfg_idx]) {
             Ok(c) => c,
@@ -827,6 +838,10 @@ impl Kanata {
         self.dynamic_macro_replay_behaviour = ReplayBehaviour {
             delay: cfg.options.dynamic_macro_replay_delay_behaviour,
         };
+        #[cfg(feature = "tcp_server")]
+        {
+            self.danger_tcp_allow_keylogging = cfg.options.tcp_opts.danger_tcp_allow_keylogging;
+        }
         self.max_key_timing_check = cfg.max_key_timing_check;
         // Note: input_devices is intentionally not updated on live reload.
         // The KbdIn device_hash_to_id map is built at startup and not rebuilt.
@@ -1445,7 +1460,7 @@ impl Kanata {
         let custom_event = layout.tick();
 
         #[cfg(feature = "tcp_server")]
-        {
+        if self.danger_tcp_allow_keylogging {
             let key_name = |key_pos| {
                 if key_pos < KEY_MAX {
                     let osc = OsCode::from(key_pos);
@@ -2506,7 +2521,10 @@ impl Kanata {
                         let mut clients = clients.lock();
                         let mut stale_clients = vec![];
                         for (id, client) in &mut *clients {
-                            match client.write_all(&notification) {
+                            if !client.is_subscribed_to(&event) {
+                                continue;
+                            }
+                            match client.stream.write_all(&notification) {
                                 Ok(_) => {
                                     log::debug!("layer change notification sent");
                                 }

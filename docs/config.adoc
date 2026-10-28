@@ -5224,6 +5224,24 @@ Monitoring permission in System Settings > Privacy & Security.
 )
 ----
 
+[[danger-tcp-allow-keylogging]]
+=== danger-tcp-allow-keylogging
+
+With TCP enabled,
+clients can subscribe to events that contain your key outputs.
+To ensure that users understand what they are opting into,
+this is disabled by default.
+Sending key events over TCP can be enabled
+by setting this configuration to: yes.
+
+.Example:
+[source]
+----
+(defcfg
+  danger-tcp-allow-keylogging yes
+)
+----
+
 [[linux-only-linux-dev]]
 === Linux only: linux-dev
 

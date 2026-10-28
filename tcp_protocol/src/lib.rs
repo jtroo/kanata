@@ -6,6 +6,11 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
+pub const LAYER_CHANGE: &str = "LayerChange";
+pub const HOLD_ACTIVATED: &str = "HoldActivated";
+pub const TAP_ACTIVATED: &str = "TapActivated";
+pub const VALID_SUBSCRIBE_OPTIONS: [&str; 3] = [LAYER_CHANGE, HOLD_ACTIVATED, TAP_ACTIVATED];
+
 /// Messages sent from the server to connected clients.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ServerMessage {
@@ -60,6 +65,12 @@ pub enum ServerMessage {
     },
 }
 
+/// Returns true if the subscribe option logs user typing over TCP
+/// and returns false otherwise.
+pub fn subscribe_option_is_keylogging(opt: &str) -> bool {
+    matches!(opt, TAP_ACTIVATED | HOLD_ACTIVATED)
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "status")]
 pub enum ServerResponse {
@@ -86,6 +97,7 @@ impl ServerMessage {
 /// Messages sent from clients to the server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ClientMessage {
+    Subscribe(Vec<String>),
     ChangeLayer {
         new: String,
     },
@@ -279,5 +291,22 @@ mod tests {
         };
         let json = serde_json::to_string(&msg).unwrap();
         assert_eq!(json, r#"{"TapActivated":{"key":"a"}}"#);
+    }
+
+    #[test]
+    fn test_subscribe_json_format() {
+        let msg =
+            ClientMessage::Subscribe(vec![LAYER_CHANGE.to_string(), HOLD_ACTIVATED.to_string()]);
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(json, r#"{"Subscribe":["LayerChange","HoldActivated"]}"#);
+        match serde_json::from_str(&json).unwrap() {
+            ClientMessage::Subscribe(options) => {
+                assert_eq!(
+                    options,
+                    vec![LAYER_CHANGE.to_string(), HOLD_ACTIVATED.to_string()]
+                );
+            }
+            _ => panic!("Expected Subscribe"),
+        }
     }
 }

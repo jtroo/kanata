@@ -346,6 +346,13 @@ If you need help, please feel welcome to ask in the GitHub discussions.
   ;; the key name is always supported, however.
   ;;
   ;; mouse-movement-key mvmt
+
+  ;; With TCP enabled, clients can subscribe to events that contain your
+  ;; key outputs. To ensure that users understand what they are opting
+  ;; into, this is disabled by default. This can be enabled via the
+  ;; following configuration:
+  ;;
+  ;; danger-tcp-allow-keylogging yes
 )
 
 ;; deflocalkeys-* enables you to define and use key names that match your locale

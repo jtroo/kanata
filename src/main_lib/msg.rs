@@ -6,7 +6,10 @@
 
 use anyhow::{Context, Result, bail};
 use kanata_state_machine::SocketAddrWrapper;
-use kanata_tcp_protocol::{ClientMessage, FakeKeyActionMessage, ServerMessage, ServerResponse};
+use kanata_tcp_protocol::{
+    ClientMessage, FakeKeyActionMessage, HOLD_ACTIVATED, LAYER_CHANGE, ServerMessage,
+    ServerResponse, TAP_ACTIVATED,
+};
 use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::time::{Duration, Instant};
@@ -72,8 +75,18 @@ enum MsgCommand {
     },
     /// Print the kanata version, protocol version and capabilities.
     Hello,
-    /// Print every message from kanata as a JSON line until the connection closes.
-    EventStream,
+    /// Print subscribed messages from kanata as JSON lines until the connection closes.
+    EventStream {
+        /// Subscribe to layer-change messages.
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        layer_change: bool,
+        /// Subscribe to tap-hold hold-activation messages.
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        hold_activated: bool,
+        /// Subscribe to tap-hold tap-activation messages.
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        tap_activated: bool,
+    },
 }
 
 #[derive(clap::ValueEnum, Clone, Copy, Debug)]
@@ -239,7 +252,22 @@ fn execute(
             })?;
             output(out, output_format, &line, &text)?;
         }
-        MsgCommand::EventStream => {
+        MsgCommand::EventStream {
+            layer_change,
+            hold_activated,
+            tap_activated,
+        } => {
+            let mut subscriptions = Vec::new();
+            if layer_change {
+                subscriptions.push(LAYER_CHANGE.to_string());
+            }
+            if hold_activated {
+                subscriptions.push(HOLD_ACTIVATED.to_string());
+            }
+            if tap_activated {
+                subscriptions.push(TAP_ACTIVATED.to_string());
+            }
+            conn.send(&ClientMessage::Subscribe(subscriptions))?;
             conn.deadline = None;
             loop {
                 let (line, _) = conn.recv()?;
@@ -451,6 +479,11 @@ mod tests {
             let opts = || ReloadOpts { skip_wait: false };
             match request {
                 ClientMessage::ChangeLayer { new } => MsgCommand::ChangeLayer { name: new },
+                ClientMessage::Subscribe(_) => MsgCommand::EventStream {
+                    layer_change: true,
+                    hold_activated: true,
+                    tap_activated: true,
+                },
                 ClientMessage::RequestLayerNames {} => MsgCommand::ListLayers,
                 ClientMessage::RequestFakeKeyNames {} => MsgCommand::ListFakeKeys,
                 ClientMessage::RequestCurrentLayerInfo {} => MsgCommand::CurrentLayerInfo,
