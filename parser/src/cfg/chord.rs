@@ -3,7 +3,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use std::fs;
 
-use crate::{anyhow_expr, bail_expr};
+use crate::{anyhow_expr, bail, bail_expr};
 
 use super::*;
 
@@ -35,28 +35,41 @@ pub(crate) fn parse_defchordv2(
                 t: ref exprs,
                 span: _,
             }) if matches!(exprs.first(), Some(SExpr::Atom(a)) if a.t == "include") => {
-                let file_name = exprs[1].atom(s.vars()).unwrap();
-                let chord_translation = ChordTranslation::create(
-                    file_name,
-                    &chunk[2],
-                    &chunk[3],
-                    &chunk[4],
-                    &s.layers[0][0],
-                );
-                let chord_definitions = parse_chord_file(file_name).unwrap();
-                let processed = chord_definitions.iter().map(|chord_def| {
-                    let chunk = chord_translation.translate_chord(chord_def);
-                    parse_single_chord(&chunk, s, &mut all_participating_key_sets)
-                });
-                Ok::<_, ParseError>(processed.collect::<Vec<_>>())
+                let parsed = (|| -> Result<Vec<Result<_>>> {
+                    let file_expr = exprs.get(1).ok_or_else(|| {
+                        anyhow_expr!(
+                            &chunk[0],
+                            "include expects a file name: (include <file name>)"
+                        )
+                    })?;
+                    let file_name = file_expr.atom(s.vars()).ok_or_else(|| {
+                        anyhow_expr!(file_expr, "include expects a file name, not a list")
+                    })?;
+                    let chord_translation = ChordTranslation::create(
+                        file_name,
+                        &chunk[2],
+                        &chunk[3],
+                        &chunk[4],
+                        &s.layers[0][0],
+                    );
+                    let chord_definitions = parse_chord_file(file_name)
+                        .map_err(|e| anyhow_expr!(file_expr, "{}", e.msg))?;
+                    Ok(chord_definitions
+                        .iter()
+                        .map(|chord_def| {
+                            let chunk = chord_translation.translate_chord(chord_def);
+                            parse_single_chord(&chunk, s, &mut all_participating_key_sets)
+                        })
+                        .collect())
+                })();
+                parsed.unwrap_or_else(|e| vec![Err(e)])
             }
-            _ => Ok(vec![parse_single_chord(
+            _ => vec![parse_single_chord(
                 chunk,
                 s,
                 &mut all_participating_key_sets,
-            )]),
+            )],
         })
-        .flat_map(|vec_result| vec_result.into_iter())
         .collect::<Vec<Result<_>>>();
     let unsuccessful = all_chords
         .iter()
@@ -193,10 +206,10 @@ fn parse_disabled_layers(disabled_layers: &SExpr, s: &ParserState) -> Result<Vec
 }
 
 fn parse_chord_file(file_name: &str) -> Result<Vec<ChordDefinition>> {
-    let input_data =
-        fs::read_to_string(file_name).unwrap_or_else(|_| panic!("Unable to read file {file_name}"));
-    let parsed_chords = parse_input(&input_data).unwrap();
-    Ok(parsed_chords)
+    let input_data = fs::read_to_string(file_name).map_err(|e| {
+        ParseError::new_without_span(format!("Unable to read file {file_name}: {e}"))
+    })?;
+    parse_input(&input_data)
 }
 
 fn parse_input(input: &str) -> Result<Vec<ChordDefinition>> {
@@ -205,11 +218,11 @@ fn parse_input(input: &str) -> Result<Vec<ChordDefinition>> {
         .filter(|line| !line.trim().is_empty() && !line.trim().starts_with("//"))
         .map(|line| {
             let mut caps = line.split('\t');
-            let error_message = format!(
-                "Each line needs to have an action separated by a tab character, got '{line}'"
-            );
-            let keys = caps.next().expect(&error_message);
-            let action = caps.next().expect(&error_message);
+            let (Some(keys), Some(action)) = (caps.next(), caps.next()) else {
+                bail!(
+                    "Each line needs to have an action separated by a tab character, got '{line}'"
+                );
+            };
             Ok(ChordDefinition {
                 keys: keys.to_string(),
                 action: action.to_string(),
