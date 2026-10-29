@@ -2513,3 +2513,57 @@ fn parse_defcfg_wintercept_mouse_hwid_rejects_overlong() {
 ";
     parse_cfg(source).expect("short hwid should parse");
 }
+
+#[test]
+fn defchordsv2_include_without_file_name_is_an_error() {
+    let source = "
+(defcfg concurrent-tap-hold yes)
+(defsrc a b)
+(deflayer base a b)
+(defchordsv2
+  (include) () 100 all-released ()
+)
+";
+    let err = parse_cfg(source).expect_err("include without a file name must be rejected");
+    assert!(
+        err.msg.contains("include"),
+        "unexpected error message: {}",
+        err.msg
+    );
+}
+
+#[test]
+fn defchordsv2_include_with_list_file_name_is_an_error() {
+    let source = "
+(defcfg concurrent-tap-hold yes)
+(defsrc a b)
+(deflayer base a b)
+(defchordsv2
+  (include (a b)) () 100 all-released ()
+)
+";
+    let err = parse_cfg(source).expect_err("include with a list must be rejected");
+    assert!(
+        err.msg.contains("include"),
+        "unexpected error message: {}",
+        err.msg
+    );
+}
+
+#[test]
+fn defchordsv2_include_of_missing_file_is_an_error() {
+    let source = "
+(defcfg concurrent-tap-hold yes)
+(defsrc a b)
+(deflayer base a b)
+(defchordsv2
+  (include this-chord-file-does-not-exist.txt) () 100 all-released ()
+)
+";
+    let err = parse_cfg(source).expect_err("include of a missing file must be rejected");
+    assert!(
+        err.msg.contains("this-chord-file-does-not-exist.txt"),
+        "unexpected error message: {}",
+        err.msg
+    );
+}
