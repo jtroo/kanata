@@ -595,6 +595,24 @@ fn parse_setmouse_wrong_param_count_names_setmouse() {
 }
 
 #[test]
+fn parse_unmod_without_keys_has_clean_error_message() {
+    for action in ["(unmod)", "(unshift)"] {
+        let err = parse_cfg(&format!("(defsrc a) (deflayer base {action})"))
+            .expect_err("unmod without keys should be rejected");
+        assert!(
+            err.msg.contains(" expects at least one key name"),
+            "{action}: real e: {}",
+            err.msg
+        );
+        assert!(
+            !err.msg.contains("expects expects"),
+            "{action}: real e: {}",
+            err.msg
+        );
+    }
+}
+
+#[test]
 fn parse_fakekey_delay_wrong_param_count_is_an_error() {
     for action in [
         "(on-press-fakekey-delay)",

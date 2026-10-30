@@ -9,7 +9,7 @@ pub(crate) fn parse_unmod(
     ac_params: &[SExpr],
     s: &ParserState,
 ) -> Result<&'static KanataAction> {
-    const ERR_MSG: &str = "expects expects at least one key name";
+    const ERR_MSG: &str = "expects at least one key name";
     if ac_params.is_empty() {
         bail!("{unmod_type} {ERR_MSG}\nfound {} items", ac_params.len());
     }
