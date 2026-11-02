@@ -1,8 +1,12 @@
 //! Windows interception-based mechanism for reading/writing input events.
 
 use std::io;
+use std::ops::RangeInclusive;
+use std::sync::atomic::{AtomicI32, Ordering};
 
-use kanata_interception::{Interception, KeyState, MouseFlags, MouseState, ScanCode, Stroke};
+use kanata_interception::{
+    Device, Interception, KeyState, MouseFlags, MouseState, ScanCode, Stroke,
+};
 
 use super::OsCodeWrapper;
 use crate::kanata::CalculatedMouseMove;
@@ -153,20 +157,40 @@ thread_local! {
 /// Handle for writing keys to the OS.
 pub struct KbdOut {}
 
+// Note regarding device numbers:
+// Keyboard devices are 1-10 and mouse devices are 11-20. Source:
+// https://github.com/oblitum/Interception/blob/39eecbbc46a52e0402f783b872ef62b0254a896a/library/interception.h#L34
+const KEYBOARD_DEVICES: RangeInclusive<Device> = 1..=10;
+const MOUSE_DEVICES: RangeInclusive<Device> = 11..=20;
+
+/// Devices that keyboard and mouse output is sent to; 0 until one is known.
+///
+/// The driver delivers a stroke through the device it is sent to and drops it when that device
+/// number has no device behind it. Which numbers are populated depends on the machine and changes
+/// when devices are reconnected, so the input loop records the device of each intercepted stroke,
+/// and output falls back to the first device that accepts the stroke.
+pub static KEYBOARD_OUTPUT_DEVICE: AtomicI32 = AtomicI32::new(0);
+pub static MOUSE_OUTPUT_DEVICE: AtomicI32 = AtomicI32::new(0);
+
 fn write_interception(event: InputEvent) {
     let strokes = [event.0];
     log::debug!("kanata sending {:?} to driver", strokes[0]);
+    let (output_device, mut devices) = match strokes[0] {
+        Stroke::Keyboard { .. } => (&KEYBOARD_OUTPUT_DEVICE, KEYBOARD_DEVICES),
+        Stroke::Mouse { .. } => (&MOUSE_OUTPUT_DEVICE, MOUSE_DEVICES),
+    };
     INTRCPTN.with(|ic| {
-        match strokes[0] {
-            // Note regarding device numbers:
-            // Keyboard devices are 1-10 and mouse devices are 11-20. Source:
-            // https://github.com/oblitum/Interception/blob/39eecbbc46a52e0402f783b872ef62b0254a896a/library/interception.h#L34
-            Stroke::Keyboard { .. } => {
-                ic.send(1, &strokes[0..1]);
+        // send returns the number of strokes the driver accepted: 0 means nothing was delivered.
+        let dev = output_device.load(Ordering::Relaxed);
+        if dev != 0 && ic.send(dev, &strokes) == 1 {
+            return;
+        }
+        match devices.find(|&d| d != dev && ic.send(d, &strokes) == 1) {
+            Some(d) => {
+                log::info!("sending output to interception device {d}");
+                output_device.store(d, Ordering::Relaxed);
             }
-            Stroke::Mouse { .. } => {
-                ic.send(11, &strokes[0..1]);
-            }
+            None => log::error!("no interception device accepted {:?}", strokes[0]),
         }
     })
 }
