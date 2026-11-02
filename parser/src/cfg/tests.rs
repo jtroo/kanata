@@ -613,6 +613,19 @@ fn parse_unmod_without_keys_has_clean_error_message() {
 }
 
 #[test]
+fn parse_tap_dance_with_empty_action_list_is_an_error() {
+    for action in ["tap-dance", "tap-dance-eager"] {
+        let err = parse_cfg(&format!("(defsrc a) (deflayer base ({action} 200 ()))"))
+            .expect_err("tap-dance without actions should be rejected");
+        assert!(
+            err.msg.contains("at least one action"),
+            "{action}: real e: {}",
+            err.msg
+        );
+    }
+}
+
+#[test]
 fn parse_fakekey_delay_wrong_param_count_is_an_error() {
     for action in [
         "(on-press-fakekey-delay)",
