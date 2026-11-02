@@ -2,6 +2,7 @@ use super::*;
 
 use crate::anyhow_expr;
 use crate::bail;
+use crate::bail_expr;
 
 pub(crate) fn parse_tap_dance(
     ac_params: &[SExpr],
@@ -25,6 +26,12 @@ pub(crate) fn parse_tap_dance(
             Ok(actions)
         })
         .ok_or_else(|| anyhow_expr!(&ac_params[1], "{ERR_MSG}: expected a list"))??;
+    if actions.is_empty() {
+        bail_expr!(
+            &ac_params[1],
+            "{ERR_MSG}: the list must contain at least one action"
+        );
+    }
 
     Ok(s.a.sref(Action::TapDance(s.a.sref(TapDance {
         timeout,
