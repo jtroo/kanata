@@ -256,6 +256,7 @@ pub(crate) fn parse_layers(
         // physically activated. This enable other code to rely on there always being a no-op key.
         layers_cfg[layer_level][0][0] = Action::NoOp;
     }
+    reserve_layer_locks(s, &mut layers_cfg)?;
     Ok(layers_cfg)
 }
 
@@ -275,4 +276,48 @@ pub(crate) fn parse_layer_toggle(
     let idx = layer_idx(ac_params, &s.layer_idxs, s)?;
     set_layer_change_lsp_hint(&ac_params[0], &mut s.lsp_hints.borrow_mut());
     Ok(s.a.sref(Action::Layer(idx)))
+}
+
+pub(crate) fn parse_layer_lock_toggle(
+    ac_params: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    let idx = layer_idx(ac_params, &s.layer_idxs, s)?;
+    set_layer_change_lsp_hint(&ac_params[0], &mut s.lsp_hints.borrow_mut());
+    let mut slots = s.layer_lock_slots.borrow_mut();
+    // Uses of the same layer share a slot, so two keys toggle the same lock.
+    let next_slot = slots.len();
+    let (x, y) = get_layer_lock_coords(*slots.entry(idx).or_insert(next_slot));
+    custom(
+        CustomAction::FakeKey {
+            coord: Coord { x, y },
+            action: FakeKeyAction::Toggle,
+        },
+        &s.a,
+    )
+}
+
+/// Slots count down from the end of the row; virtual keys count up from the start.
+fn get_layer_lock_coords(slot: usize) -> (u8, u16) {
+    (FAKE_KEY_ROW, (KEYS_IN_ROW - 1 - slot) as u16)
+}
+
+/// Runs after all actions are parsed, when both counts sharing the row are final.
+fn reserve_layer_locks(s: &ParserState, layers_cfg: &mut IntermediateLayers) -> Result<()> {
+    let slots = s.layer_lock_slots.borrow();
+    if s.virtual_keys.len() + slots.len() > KEYS_IN_ROW {
+        bail!(
+            "Maximum number of virtual keys and layer-lock-toggle layers combined is \
+             {KEYS_IN_ROW}, found {} virtual keys and {} locked layers",
+            s.virtual_keys.len(),
+            slots.len()
+        );
+    }
+    for (layer_idx, slot) in slots.iter() {
+        let (x, y) = get_layer_lock_coords(*slot);
+        for layer in layers_cfg.iter_mut() {
+            layer[x as usize][y as usize] = Action::Layer(*layer_idx);
+        }
+    }
+    Ok(())
 }
