@@ -2,7 +2,7 @@
 
 <!-- NOTE: GitHub release doc seems to not support multiline paragraph joining as opposed to other places markdown is used in GitHub. Keep paragraphs on one line in this file, as ugly as it is to do so. -->
 
-Link to the appropriate configuration guide version: [guide link TODO: FIX LINK](https://github.com/jtroo/kanata/blob/FIXME/docs/config.adoc).
+Link to the appropriate configuration guide version: [guide link TODO: FIX LINK](https://github.com/jtroo/kanata/blob/vFIXME/docs/config.adoc).
 
 ## Changelog (since <TODO: previous_version_here>)
 
