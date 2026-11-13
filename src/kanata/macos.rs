@@ -3,6 +3,7 @@ use anyhow::{Result, anyhow, bail};
 use log::info;
 use parking_lot::Mutex;
 use std::convert::TryFrom;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::mpsc::SyncSender as Sender;
 use std::time::Duration;
@@ -124,6 +125,7 @@ impl Kanata {
         // See `oskbd::start_screen_lock_poller` for the design notes.
         crate::oskbd::start_screen_lock_poller();
 
+        let mut pointer_buttons: HashSet<(u64, u8)> = HashSet::new();
         loop {
             // --- Event processing loop ---
             let needs_recovery = loop {
@@ -160,6 +162,62 @@ impl Kanata {
                         "console session paused (lock/user-switch) — dropping read event and releasing input devices"
                     );
                     break true;
+                }
+
+                if event.flags & 4 != 0 {
+                    let removed: Vec<u8> = pointer_buttons.iter()
+                        .filter_map(|&(device, button)| (device == event.device_hash).then_some(button))
+                        .collect();
+                    pointer_buttons.retain(|&(device, _)| device != event.device_hash);
+                    let _guard = kanata.lock();
+                    for button in removed {
+                        if !pointer_buttons.iter().any(|&(_, held)| held == button) {
+                            karabiner_driverkit::pointing_button_release(button);
+                        }
+                    }
+                    continue;
+                }
+
+                // A seized keyboard can also contain a mouse collection.
+                // Only relative axes within such a collection are motion;
+                // absolute touchpads and unrelated axes must not be treated
+                // as relative mouse movement.
+                if event.flags & 1 != 0 {
+                    let axis = match (event.page, event.code, event.flags & 2 != 0) {
+                        (1, 0x30, true) => Some(0),
+                        (1, 0x31, true) => Some(1),
+                        (1, 0x38, true) => Some(2),
+                        (0x0c, 0x238, true) => Some(3),
+                        _ => None,
+                    };
+                    if let Some(axis) = axis {
+                        let _guard = kanata.lock();
+                        let mut remaining = event.value as i64;
+                        while remaining != 0 {
+                            let step = remaining.clamp(-127, 127) as i8;
+                            let mut values = [0i8; 4];
+                            values[axis] = step;
+                            karabiner_driverkit::pointing_post_motion(values[0], values[1], values[2], values[3]);
+                            remaining -= i64::from(step);
+                        }
+                        continue;
+                    }
+                    if event.page == 9 && (1..=16).contains(&event.code) {
+                        let _guard = kanata.lock();
+                        let button = event.code as u8;
+                        if event.value == 0 {
+                            if pointer_buttons.remove(&(event.device_hash, button))
+                                && !pointer_buttons.iter().any(|&(_, held)| held == button) {
+                                karabiner_driverkit::pointing_button_release(button);
+                            }
+                        } else {
+                            let already_held = pointer_buttons.iter().any(|&(_, held)| held == button);
+                            if pointer_buttons.insert((event.device_hash, button)) && !already_held {
+                                karabiner_driverkit::pointing_button_press(button);
+                            }
+                        }
+                        continue;
+                    }
                 }
 
                 let mut key_event = match KeyEvent::try_from(event) {
@@ -234,6 +292,12 @@ impl Kanata {
 
             // --- Release input so the keyboard works normally (unseized) ---
             kb.release_input();
+            {
+                let _guard = kanata.lock();
+                for button in pointer_buttons.drain().map(|(_, button)| button).collect::<HashSet<_>>() {
+                    karabiner_driverkit::pointing_button_release(button);
+                }
+            }
 
             info!(
                 "Input devices released. Keyboard is usable (without remapping). \
