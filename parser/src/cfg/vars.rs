@@ -22,6 +22,7 @@ pub(crate) fn parse_vars(
                 },
                 None => bail_expr!(var_name_expr, "variable name must have a subsequent value"),
             };
+            check_var_cycle(var_name, &var_expr, &vars)?;
             #[cfg(feature = "lsp")]
             _lsp_hints
                 .definition_locations
@@ -33,6 +34,49 @@ pub(crate) fn parse_vars(
         }
     }
     Ok(vars)
+}
+
+/// Errors if `var_expr`, the value about to be stored for `var_name`, refers back to `var_name`
+/// through `$name` references, either directly or nested inside lists. Variables are resolved
+/// when they are used, so a cycle would otherwise recurse until the stack overflows. Every
+/// variable is checked when it is added, so the existing variables never contain a cycle.
+fn check_var_cycle(var_name: &str, var_expr: &SExpr, vars: &HashMap<String, SExpr>) -> Result<()> {
+    let mut visited = HashSet::default();
+    if let Some(path) = find_var_ref_path(var_name, var_expr, vars, &mut visited) {
+        bail_expr!(
+            var_expr,
+            "variable cycle: {var_name} -> {}",
+            path.join(" -> ")
+        );
+    }
+    Ok(())
+}
+
+/// Returns the variable names, ending with `target`, through which `expr` refers to `target`.
+fn find_var_ref_path<'a>(
+    target: &str,
+    expr: &'a SExpr,
+    vars: &'a HashMap<String, SExpr>,
+    visited: &mut HashSet<&'a str>,
+) -> Option<Vec<&'a str>> {
+    match expr {
+        SExpr::Atom(a) => {
+            let name = a.t.strip_prefix('$')?;
+            if name == target {
+                return Some(vec![name]);
+            }
+            if !visited.insert(name) {
+                return None;
+            }
+            let mut path = find_var_ref_path(target, vars.get(name)?, vars, visited)?;
+            path.insert(0, name);
+            Some(path)
+        }
+        SExpr::List(l) => {
+            l.t.iter()
+                .find_map(|e| find_var_ref_path(target, e, vars, visited))
+        }
+    }
 }
 
 pub(crate) fn parse_list_var(expr: &Spanned<Vec<SExpr>>, vars: &HashMap<String, SExpr>) -> SExpr {

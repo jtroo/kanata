@@ -1937,6 +1937,91 @@ fn parse_defvar_concat() {
 }
 
 #[test]
+fn parse_defvar_cycle_is_error() {
+    let source = r#"
+(defsrc a)
+(defvar x $y
+  y $x)
+(deflayer base $x)
+"#;
+    let err = parse_cfg(source).expect_err("variable cycle should be rejected");
+    assert_eq!(err.msg, "variable cycle: y -> x -> y");
+}
+
+#[test]
+fn parse_defvar_self_reference_is_error() {
+    let source = r#"
+(defsrc a)
+(defvar x $x)
+(deflayer base $x)
+"#;
+    let err = parse_cfg(source).expect_err("self-referencing variable should be rejected");
+    assert_eq!(err.msg, "variable cycle: x -> x");
+}
+
+#[test]
+fn parse_defvar_longer_cycle_is_error() {
+    let source = r#"
+(defsrc a)
+(defvar x $y)
+(defvar y $z
+  z $x)
+(deflayer base a)
+"#;
+    let err = parse_cfg(source).expect_err("variable cycle should be rejected");
+    assert_eq!(err.msg, "variable cycle: z -> x -> y -> z");
+}
+
+#[test]
+fn parse_defvar_cycle_used_by_concat_is_error() {
+    let source = r#"
+(defsrc a)
+(defvar x $y
+  y $x
+  z (concat $x))
+(deflayer base a)
+"#;
+    let err = parse_cfg(source).expect_err("variable cycle should be rejected");
+    assert_eq!(err.msg, "variable cycle: y -> x -> y");
+}
+
+#[test]
+fn parse_defvar_forward_reference_chain() {
+    let source = r#"
+(defsrc a)
+(defvar a $b
+  b $c
+  c 1
+  d (multi $a $e $b)
+  e 2)
+(deflayer base $d)
+"#;
+    parse_cfg(source)
+        .map_err(|e| eprintln!("{:?}", miette::Error::from(e)))
+        .expect("parses");
+}
+
+#[test]
+fn parse_defvar_cycle_in_list_is_error() {
+    let source = r#"
+(defsrc a)
+(defvar x (multi a $x))
+(deflayer base $x)
+"#;
+    let err = parse_cfg(source).expect_err("variable cycle should be rejected");
+    assert_eq!(err.msg, "variable cycle: x -> x");
+
+    let source = r#"
+(defsrc a)
+(defvar x ($y)
+  y ($x))
+(deflayer base (macro $x))
+"#;
+    let err = parse_cfg(source).expect_err("variable cycle should be rejected");
+    assert_eq!(err.msg, "variable cycle: y -> x -> y");
+}
+
+#[test]
 fn parse_template_1() {
     let source = r#"
 (deftemplate home-row (j-behaviour)

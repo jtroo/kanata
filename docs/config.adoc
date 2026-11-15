@@ -723,6 +723,9 @@ Similar to how `defalias` works,
 where the first item in the pair is the variable name
 and the second item is a string or list.
 Variables are allowed to refer to previously defined variables.
+A variable must not refer to itself,
+either directly or through other variables;
+such a cycle is reported as a configuration error.
 
 Variables can be used to substitute most values.
 Some notable exceptions are:
