@@ -212,10 +212,6 @@ fn kbd_out_log(
     _key_code: Option<OsCode>,
     _tick: Option<u128>,
 ) {
-    let a = LogFmtT::InTick;
-    if a == LogFmtT::InTick {
-        println!("{}", 42)
-    };
     #[cfg(all(
         not(feature = "simulated_input"),
         not(feature = "passthru_ahk"),
