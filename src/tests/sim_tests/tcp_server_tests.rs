@@ -235,3 +235,33 @@ fn tcp_notifications_denied_with_keylogging_disabled() {
         line.clear();
     }
 }
+
+#[test]
+fn tcp_notifications_forward_push_msg_and_reload_by_default() {
+    let (mut stream, mut reader, notification_tx, _wakeup_rx) =
+        notification_test_client_with_cfg("(defsrc a) (deflayer base a)");
+    sync_connection(&mut stream, &mut reader);
+    notification_tx
+        .send(ServerMessage::MessagePush {
+            message: serde_json::json!("hello"),
+        })
+        .expect("send push message");
+    notification_tx
+        .send(ServerMessage::ConfigFileReload {
+            new: "cfg.kbd".into(),
+        })
+        .expect("send config reload");
+
+    reader
+        .get_ref()
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set read timeout");
+    for notification in ["MessagePush", "ConfigFileReload"] {
+        let mut line = String::new();
+        reader.read_line(&mut line).expect("notification");
+        assert!(
+            line.contains(notification),
+            "expected {notification}, got {line}"
+        );
+    }
+}

@@ -63,6 +63,10 @@ impl Connection {
             ServerMessage::LayerChange { .. } => LAYER_CHANGE_SUBSCRIPTION,
             ServerMessage::HoldActivated { .. } => HOLD_ACTIVATED_SUBSCRIPTION,
             ServerMessage::TapActivated { .. } => TAP_ACTIVATED_SUBSCRIPTION,
+            // Not subscribable: always forwarded, as before subscriptions existed.
+            ServerMessage::MessagePush { .. } | ServerMessage::ConfigFileReload { .. } => {
+                return true;
+            }
             _ => return false,
         };
         self.subscriptions & subscription != 0
