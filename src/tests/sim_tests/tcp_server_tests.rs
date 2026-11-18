@@ -281,6 +281,10 @@ fn tcp_notifications_push_msg_and_reload_can_be_chosen_separately() {
         .expect("send layer change");
     send_push_msg_and_reload(&notification_tx);
 
+    reader
+        .get_ref()
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set read timeout");
     let mut line = String::new();
     reader.read_line(&mut line).expect("push notification");
     assert!(

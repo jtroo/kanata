@@ -3524,6 +3524,9 @@ Messages are sent as newline-terminated JSON in the format:
 {"MessagePush":{"message":"your-message-here"}}
 ----
 
+Clients receive these messages by default.
+A client that sends `Subscribe` receives them only if the list includes `MessagePush`.
+
 Compared to the <<cmd>> action, `push-msg` offers:
 
 - **Better security**: No shell execution, no privilege escalation risks
