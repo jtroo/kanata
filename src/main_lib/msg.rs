@@ -7,8 +7,8 @@
 use anyhow::{Context, Result, bail};
 use kanata_state_machine::SocketAddrWrapper;
 use kanata_tcp_protocol::{
-    ClientMessage, FakeKeyActionMessage, HOLD_ACTIVATED, LAYER_CHANGE, ServerMessage,
-    ServerResponse, TAP_ACTIVATED,
+    CONFIG_FILE_RELOAD, ClientMessage, FakeKeyActionMessage, HOLD_ACTIVATED, LAYER_CHANGE,
+    MESSAGE_PUSH, ServerMessage, ServerResponse, TAP_ACTIVATED,
 };
 use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::net::{SocketAddr, TcpStream};
@@ -86,6 +86,12 @@ enum MsgCommand {
         /// Subscribe to tap-hold tap-activation messages.
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         tap_activated: bool,
+        /// Subscribe to push-msg messages.
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        message_push: bool,
+        /// Subscribe to config file reload messages.
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        config_file_reload: bool,
     },
 }
 
@@ -256,6 +262,8 @@ fn execute(
             layer_change,
             hold_activated,
             tap_activated,
+            message_push,
+            config_file_reload,
         } => {
             let mut subscriptions = Vec::new();
             if layer_change {
@@ -266,6 +274,12 @@ fn execute(
             }
             if tap_activated {
                 subscriptions.push(TAP_ACTIVATED.to_string());
+            }
+            if message_push {
+                subscriptions.push(MESSAGE_PUSH.to_string());
+            }
+            if config_file_reload {
+                subscriptions.push(CONFIG_FILE_RELOAD.to_string());
             }
             conn.send(&ClientMessage::Subscribe(subscriptions))?;
             conn.deadline = None;
@@ -483,6 +497,8 @@ mod tests {
                     layer_change: true,
                     hold_activated: true,
                     tap_activated: true,
+                    message_push: true,
+                    config_file_reload: true,
                 },
                 ClientMessage::RequestLayerNames {} => MsgCommand::ListLayers,
                 ClientMessage::RequestFakeKeyNames {} => MsgCommand::ListFakeKeys,

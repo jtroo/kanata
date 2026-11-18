@@ -9,7 +9,15 @@ use std::str::FromStr;
 pub const LAYER_CHANGE: &str = "LayerChange";
 pub const HOLD_ACTIVATED: &str = "HoldActivated";
 pub const TAP_ACTIVATED: &str = "TapActivated";
-pub const VALID_SUBSCRIBE_OPTIONS: [&str; 3] = [LAYER_CHANGE, HOLD_ACTIVATED, TAP_ACTIVATED];
+pub const MESSAGE_PUSH: &str = "MessagePush";
+pub const CONFIG_FILE_RELOAD: &str = "ConfigFileReload";
+pub const VALID_SUBSCRIBE_OPTIONS: [&str; 5] = [
+    LAYER_CHANGE,
+    HOLD_ACTIVATED,
+    TAP_ACTIVATED,
+    MESSAGE_PUSH,
+    CONFIG_FILE_RELOAD,
+];
 
 /// Messages sent from the server to connected clients.
 #[derive(Debug, Serialize, Deserialize)]

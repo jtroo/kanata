@@ -6162,6 +6162,13 @@ These are sent automatically when events occur:
 | Sent when a tap-hold key triggers its tap action. The `key` field is the physical key name.
 |===
 
+By default, a client receives `LayerChange`, `ConfigFileReload` and `MessagePush`.
+A client can choose the notifications it receives with
+`{"Subscribe":["LayerChange","MessagePush"]}`.
+The list replaces the current selection; an empty list turns all of them off.
+Valid options are `LayerChange`, `ConfigFileReload`, `MessagePush`, `HoldActivated` and `TapActivated`.
+`HoldActivated` and `TapActivated` require <<danger-tcp-allow-keylogging>>.
+
 ===== Query Responses
 
 These are sent in response to client queries:

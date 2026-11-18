@@ -23,6 +23,13 @@ const LAYER_CHANGE_SUBSCRIPTION: u8 = 1 << 0;
 const HOLD_ACTIVATED_SUBSCRIPTION: u8 = 1 << 1;
 #[cfg(feature = "tcp_server")]
 const TAP_ACTIVATED_SUBSCRIPTION: u8 = 1 << 2;
+#[cfg(feature = "tcp_server")]
+const MESSAGE_PUSH_SUBSCRIPTION: u8 = 1 << 3;
+#[cfg(feature = "tcp_server")]
+const CONFIG_FILE_RELOAD_SUBSCRIPTION: u8 = 1 << 4;
+#[cfg(feature = "tcp_server")]
+const DEFAULT_SUBSCRIPTIONS: u8 =
+    LAYER_CHANGE_SUBSCRIPTION | MESSAGE_PUSH_SUBSCRIPTION | CONFIG_FILE_RELOAD_SUBSCRIPTION;
 
 #[cfg(feature = "tcp_server")]
 pub struct Connection {
@@ -35,7 +42,7 @@ impl Connection {
     fn new(stream: TcpStream) -> Self {
         Self {
             stream,
-            subscriptions: LAYER_CHANGE_SUBSCRIPTION,
+            subscriptions: DEFAULT_SUBSCRIPTIONS,
         }
     }
 
@@ -46,6 +53,8 @@ impl Connection {
                 LAYER_CHANGE => LAYER_CHANGE_SUBSCRIPTION,
                 HOLD_ACTIVATED => HOLD_ACTIVATED_SUBSCRIPTION,
                 TAP_ACTIVATED => TAP_ACTIVATED_SUBSCRIPTION,
+                MESSAGE_PUSH => MESSAGE_PUSH_SUBSCRIPTION,
+                CONFIG_FILE_RELOAD => CONFIG_FILE_RELOAD_SUBSCRIPTION,
                 _ => {
                     return Err(format!(
                         "unknown subscription option {option:?}; valid options: {}",
@@ -63,10 +72,8 @@ impl Connection {
             ServerMessage::LayerChange { .. } => LAYER_CHANGE_SUBSCRIPTION,
             ServerMessage::HoldActivated { .. } => HOLD_ACTIVATED_SUBSCRIPTION,
             ServerMessage::TapActivated { .. } => TAP_ACTIVATED_SUBSCRIPTION,
-            // Not subscribable: always forwarded, as before subscriptions existed.
-            ServerMessage::MessagePush { .. } | ServerMessage::ConfigFileReload { .. } => {
-                return true;
-            }
+            ServerMessage::MessagePush { .. } => MESSAGE_PUSH_SUBSCRIPTION,
+            ServerMessage::ConfigFileReload { .. } => CONFIG_FILE_RELOAD_SUBSCRIPTION,
             _ => return false,
         };
         self.subscriptions & subscription != 0
