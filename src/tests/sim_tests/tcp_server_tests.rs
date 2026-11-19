@@ -8,7 +8,8 @@ use std::time::{Duration, Instant};
 use parking_lot::Mutex;
 
 use kanata_tcp_protocol::{
-    ClientMessage, HOLD_ACTIVATED, LAYER_CHANGE, ServerMessage, TAP_ACTIVATED,
+    CONFIG_FILE_RELOAD, ClientMessage, HOLD_ACTIVATED, LAYER_CHANGE, MESSAGE_PUSH, ServerMessage,
+    TAP_ACTIVATED,
 };
 
 use crate::{Kanata, TcpServer};
@@ -143,7 +144,7 @@ fn disconnected_clients_are_removed_from_connections() {
 }
 
 #[test]
-fn tcp_notifications_default_to_layer_change_only() {
+fn tcp_notifications_default_excludes_tap_hold_events() {
     let (mut stream, mut reader, notification_tx, _wakeup_rx) = notification_test_client();
     sync_connection(&mut stream, &mut reader);
     notification_tx
@@ -178,6 +179,7 @@ fn tcp_notifications_can_be_disabled() {
     notification_tx
         .send(ServerMessage::TapActivated { key: "a".into() })
         .expect("send tap activation");
+    send_push_msg_and_reload(&notification_tx);
 
     assert_no_notification(&mut reader);
 }
@@ -188,7 +190,13 @@ fn tcp_notifications_can_all_be_enabled() {
     set_subscriptions(
         &mut stream,
         &mut reader,
-        vec![LAYER_CHANGE, HOLD_ACTIVATED, TAP_ACTIVATED],
+        vec![
+            LAYER_CHANGE,
+            HOLD_ACTIVATED,
+            TAP_ACTIVATED,
+            MESSAGE_PUSH,
+            CONFIG_FILE_RELOAD,
+        ],
     );
     notification_tx
         .send(ServerMessage::LayerChange { new: "base".into() })
@@ -199,8 +207,15 @@ fn tcp_notifications_can_all_be_enabled() {
     notification_tx
         .send(ServerMessage::TapActivated { key: "a".into() })
         .expect("send tap activation");
+    send_push_msg_and_reload(&notification_tx);
 
-    for notification in ["LayerChange", "HoldActivated", "TapActivated"] {
+    for notification in [
+        "LayerChange",
+        "HoldActivated",
+        "TapActivated",
+        "MessagePush",
+        "ConfigFileReload",
+    ] {
         let mut line = String::new();
         reader.read_line(&mut line).expect("notification");
         assert!(
@@ -234,4 +249,60 @@ fn tcp_notifications_denied_with_keylogging_disabled() {
         );
         line.clear();
     }
+}
+
+#[test]
+fn tcp_notifications_forward_push_msg_and_reload_by_default() {
+    let (mut stream, mut reader, notification_tx, _wakeup_rx) =
+        notification_test_client_with_cfg("(defsrc a) (deflayer base a)");
+    sync_connection(&mut stream, &mut reader);
+    send_push_msg_and_reload(&notification_tx);
+
+    reader
+        .get_ref()
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set read timeout");
+    for notification in ["MessagePush", "ConfigFileReload"] {
+        let mut line = String::new();
+        reader.read_line(&mut line).expect("notification");
+        assert!(
+            line.contains(notification),
+            "expected {notification}, got {line}"
+        );
+    }
+}
+
+#[test]
+fn tcp_notifications_push_msg_and_reload_can_be_chosen_separately() {
+    let (mut stream, mut reader, notification_tx, _wakeup_rx) = notification_test_client();
+    set_subscriptions(&mut stream, &mut reader, vec![MESSAGE_PUSH]);
+    notification_tx
+        .send(ServerMessage::LayerChange { new: "base".into() })
+        .expect("send layer change");
+    send_push_msg_and_reload(&notification_tx);
+
+    reader
+        .get_ref()
+        .set_read_timeout(Some(Duration::from_secs(2)))
+        .expect("set read timeout");
+    let mut line = String::new();
+    reader.read_line(&mut line).expect("push notification");
+    assert!(
+        line.contains("MessagePush"),
+        "unexpected notification: {line}"
+    );
+    assert_no_notification(&mut reader);
+}
+
+fn send_push_msg_and_reload(notification_tx: &SyncSender<ServerMessage>) {
+    notification_tx
+        .send(ServerMessage::MessagePush {
+            message: serde_json::json!("hello"),
+        })
+        .expect("send push message");
+    notification_tx
+        .send(ServerMessage::ConfigFileReload {
+            new: "cfg.kbd".into(),
+        })
+        .expect("send config reload");
 }
