@@ -2,11 +2,12 @@ use anyhow::{Result, anyhow};
 use kanata_interception as ic;
 use parking_lot::Mutex;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::sync::mpsc::SyncSender as Sender;
 
 use super::PRESSED_KEYS;
 use crate::kanata::*;
-use crate::oskbd::KeyValue;
+use crate::oskbd::{KEYBOARD_OUTPUT_DEVICE, KeyValue, MOUSE_OUTPUT_DEVICE};
 use kanata_parser::keys::OsCode;
 
 impl Kanata {
@@ -55,6 +56,7 @@ impl Kanata {
                                 intrcptn.send(dev, &strokes[i..i + 1]);
                                 continue;
                             }
+                            KEYBOARD_OUTPUT_DEVICE.store(dev, Ordering::Relaxed);
                             log::debug!("got stroke {:?}", strokes[i]);
                             let code = match OsCodeWrapper::try_from(strokes[i]) {
                                 Ok(c) => c.0,
@@ -85,6 +87,7 @@ impl Kanata {
                             );
 
                             if allow_this_dev {
+                                MOUSE_OUTPUT_DEVICE.store(dev, Ordering::Relaxed);
                                 log::trace!("checking mouse stroke {:?}", strokes[i]);
 
                                 if let Some(ms_mvmt_key) = *mouse_movement_key.lock()
