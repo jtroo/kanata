@@ -614,6 +614,7 @@ pub struct InputEvent {
     pub page: u32,
     pub code: u32,
     pub device_hash: u64,
+    pub flags: u32,
 }
 
 impl InputEvent {
@@ -623,6 +624,7 @@ impl InputEvent {
             page: event.page,
             code: event.code,
             device_hash: event.device_hash,
+            flags: event.flags,
         }
     }
 }
@@ -635,6 +637,7 @@ impl From<InputEvent> for DKEvent {
             code: event.code,
             // Output events don't originate from a physical device.
             device_hash: 0,
+            flags: 0,
         }
     }
 }
@@ -778,6 +781,7 @@ impl KbdIn {
             page: 0,
             code: 0,
             device_hash: 0,
+            flags: 0,
         };
 
         let got_event = wait_key(&mut event);
@@ -1151,6 +1155,7 @@ impl TryFrom<KeyEvent> for InputEvent {
                 page: pagecode.page,
                 code: pagecode.code,
                 device_hash: 0,
+                flags: 0,
             })
         } else {
             Err(())
