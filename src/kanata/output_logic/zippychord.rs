@@ -163,9 +163,6 @@ impl ZchDynamicState {
         log::debug!("zchd reset state");
         self.zchd_soft_reset();
         self.zchd_is_caps_word_active = false;
-        self.zchd_is_lsft_active = false;
-        self.zchd_is_rsft_active = false;
-        self.zchd_is_altgr_active = false;
         self.zchd_last_press = ZchLastPressClassification::IsChord;
         self.zchd_enabled_state = ZchEnabledState::Enabled;
     }
@@ -240,14 +237,14 @@ pub(crate) struct ZchState {
     zchd: ZchDynamicState,
     /// Chords configured by the user. This is fixed at runtime other than live-reloads replacing
     /// the state.
-    zch_chords: ZchPossibleChords,
+    zch_chords: Arc<ZchPossibleChords>,
     /// Options to configure behaviour.
     zch_cfg: ZchConfig,
 }
 
 impl ZchState {
     /// Configure zippychord behaviour.
-    pub(crate) fn zch_configure(&mut self, cfg: (ZchPossibleChords, ZchConfig)) {
+    pub(crate) fn zch_configure(&mut self, cfg: (Arc<ZchPossibleChords>, ZchConfig)) {
         self.zch_chords = cfg.0;
         self.zch_cfg = cfg.1;
         self.zchd.zchd_reset();

@@ -444,6 +444,77 @@ fn reject_invalid_zippy_output_mapping_arity() {
 }
 
 #[test]
+#[cfg(feature = "zippychord")]
+fn zippy_change_config_validated_at_parse() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    let zippy_file: HashMap<String, String> = [("zippy.txt".to_owned(), "ab\tab".to_owned())]
+        .into_iter()
+        .collect();
+    let cfg = |defzippy: &str, action: &str| {
+        format!("(defsrc a)\n(deflayer base (zippy-change-config {action}))\n{defzippy}")
+    };
+
+    new_from_str(
+        &cfg(
+            "(defzippy zippy.txt smart-space full)",
+            "dictionary zippy.txt smart-space none idle-reactivate-time 100",
+        ),
+        zippy_file.clone(),
+    )
+    .unwrap();
+    for (defzippy, action) in [
+        ("", "smart-space full"),
+        ("(defzippy zippy.txt)", "unknown-option 1"),
+        ("(defzippy zippy.txt)", "smart-space bogus"),
+        ("(defzippy zippy.txt)", "smart-space full smart-space none"),
+        (
+            "(defzippy zippy.txt)",
+            "dictionary zippy.txt dictionary zippy.txt",
+        ),
+        ("(defzippy zippy.txt)", "smart-space"),
+    ] {
+        assert!(
+            new_from_str(&cfg(defzippy, action), zippy_file.clone()).is_err(),
+            "{action}"
+        );
+    }
+}
+
+#[test]
+#[cfg(feature = "zippychord")]
+fn zippy_change_config_reads_each_dictionary_file_once() {
+    let _lk = lock(&CFG_PARSE_LOCK);
+    let cfg = new_from_file(&PathBuf::from("./test_cfgs/zippy_change_config.kbd")).unwrap();
+    let (defzippy, defzippy_cfg) = cfg.zippy.unwrap();
+    let [reset, options_only, dict, dict_and_options, mappings] = &cfg.zippy_change_configs[..]
+    else {
+        panic!("expected 5 actions");
+    };
+    assert!(Arc::ptr_eq(&defzippy, &reset.0));
+    assert!(Arc::ptr_eq(&defzippy, &options_only.0));
+    assert!(Arc::ptr_eq(&dict.0, &dict_and_options.0));
+    assert!(!Arc::ptr_eq(&defzippy, &dict.0));
+    assert!(!Arc::ptr_eq(&defzippy, &mappings.0));
+    assert_eq!(
+        [
+            &defzippy_cfg,
+            &reset.1,
+            &options_only.1,
+            &dict.1,
+            &dict_and_options.1
+        ]
+        .map(|c| c.zch_cfg_smart_space),
+        [
+            ZchSmartSpaceCfg::AddSpaceOnly,
+            ZchSmartSpaceCfg::AddSpaceOnly,
+            ZchSmartSpaceCfg::Disabled,
+            ZchSmartSpaceCfg::AddSpaceOnly,
+            ZchSmartSpaceCfg::Full,
+        ]
+    );
+}
+
+#[test]
 fn disallow_nested_tap_hold() {
     let _lk = lock(&CFG_PARSE_LOCK);
     match new_from_file(&std::path::PathBuf::from("./test_cfgs/nested_tap_hold.kbd"))

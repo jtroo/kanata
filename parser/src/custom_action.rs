@@ -110,6 +110,7 @@ pub enum CustomAction {
     ClipboardSaveSet(u16, &'static str),
     ClipboardSaveCmdSet(u16, &'static [&'static str]),
     ClipboardSaveSwap(u16, u16),
+    ZippyChangeConfig(u16),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

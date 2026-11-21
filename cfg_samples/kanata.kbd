@@ -1641,6 +1641,7 @@ Yet another chording implementation - zippychord:
     é (single-output ' e)
   )
 )
+;; Action that switches to another dictionary: (zippy-change-config dictionary zippy-de.txt)
 
 Example file content of zippy.txt:
 ---

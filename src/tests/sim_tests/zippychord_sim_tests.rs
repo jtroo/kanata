@@ -727,3 +727,122 @@ fn sim_zippychord_single_output() {
         result,
     );
 }
+
+#[test]
+fn sim_zippychord_change_config() {
+    let mut fcontent = FxHashMap::default();
+    fcontent.insert("file".into(), "dy\tday".into());
+    fcontent.insert("file2".into(), "ab\tabc".into());
+    let result = simulate_with_file_content(
+        "(defsrc lalt)
+         (deflayer base (zippy-change-config dictionary file2 smart-space full))
+         (defzippy file)",
+        "d:d d:y t:10 u:d u:y t:1000 d:lalt u:lalt t:10 \
+         d:d d:y t:10 u:d u:y t:1000 d:a d:b t:10 u:a u:b t:1000",
+        fcontent,
+    )
+    .no_releases()
+    .no_time()
+    .to_ascii();
+    assert_eq!(
+        "dn:D dn:BSpace dn:D dn:A dn:Y \
+         dn:D dn:Y \
+         dn:A dn:BSpace dn:A dn:B dn:C dn:Space",
+        result,
+    );
+}
+
+#[test]
+fn sim_zippychord_change_config_keeps_held_shift() {
+    let mut fcontent = FxHashMap::default();
+    fcontent.insert("file".into(), "dy\tday".into());
+    fcontent.insert("file2".into(), "ab\tabc".into());
+    let result = simulate_with_file_content(
+        "(defsrc lalt lsft)
+         (deflayer base (zippy-change-config dictionary file2) lsft)
+         (defzippy file)",
+        "d:lsft t:10 d:lalt u:lalt t:10 d:a d:b t:10 u:a u:b t:10 u:lsft t:1000",
+        fcontent,
+    )
+    .no_time()
+    .to_ascii();
+    assert_eq!(
+        "dn:LShift dn:A dn:BSpace up:BSpace up:A dn:A up:LShift up:B dn:B dn:C up:C \
+         dn:LShift up:A up:B up:LShift",
+        result,
+    );
+}
+
+#[test]
+fn sim_zippychord_change_config_keeps_unnamed_options() {
+    let mut fcontent = FxHashMap::default();
+    fcontent.insert("file".into(), "dy\tday".into());
+    fcontent.insert("file2".into(), "ab\tabc".into());
+    let result = simulate_with_file_content(
+        "(defsrc lalt)
+         (deflayer base (zippy-change-config dictionary file2))
+         (defzippy file smart-space full)",
+        "d:lalt u:lalt t:10 d:a d:b t:10 u:a u:b t:1000",
+        fcontent,
+    )
+    .no_releases()
+    .no_time()
+    .to_ascii();
+    assert_eq!("dn:A dn:BSpace dn:A dn:B dn:C dn:Space", result);
+}
+
+#[test]
+fn sim_zippychord_live_reload_resets_to_defzippy() {
+    let dir = std::env::temp_dir().join("kanata-sim-zippy-change-config-reload");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("file"), "dy\tday").unwrap();
+    std::fs::write(dir.join("file2"), "ab\tabc").unwrap();
+    let cfg_path = dir.join("cfg.kbd");
+    std::fs::write(
+        &cfg_path,
+        "(defsrc lalt) (deflayer base (zippy-change-config dictionary file2)) (defzippy file)",
+    )
+    .unwrap();
+    let _lk = match CFG_PARSE_LOCK.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    let mut k = Kanata::new_from_str(
+        &std::fs::read_to_string(&cfg_path).unwrap(),
+        [
+            ("file".into(), "dy\tday".into()),
+            ("file2".into(), "ab\tabc".into()),
+        ]
+        .into_iter()
+        .collect(),
+    )
+    .unwrap();
+    k.cfg_paths = vec![cfg_path];
+    k.cur_cfg_idx = 0;
+    let tap = |k: &mut Kanata, keys: &[crate::OsCode]| {
+        for &key in keys {
+            k.handle_input_event(&KeyEvent::new(key, KeyValue::Press))
+                .unwrap();
+        }
+        k.tick_ms(10, &None).unwrap();
+        for &key in keys {
+            k.handle_input_event(&KeyEvent::new(key, KeyValue::Release))
+                .unwrap();
+        }
+        k.tick_ms(1000, &None).unwrap();
+    };
+    tap(&mut k, &[crate::OsCode::KEY_LEFTALT]);
+    k.do_live_reload(&None).unwrap();
+    k.kbd_out.outputs.events.clear();
+    tap(&mut k, &[crate::OsCode::KEY_D, crate::OsCode::KEY_Y]);
+    assert_eq!(
+        "dn:D dn:BSpace dn:D dn:A dn:Y",
+        k.kbd_out
+            .outputs
+            .events
+            .join("\n")
+            .no_releases()
+            .no_time()
+            .to_ascii(),
+    );
+}

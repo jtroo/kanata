@@ -1,0 +1,9 @@
+(defsrc a b c d e)
+(deflayer base
+  (zippy-change-config)
+  (zippy-change-config smart-space none)
+  (zippy-change-config dictionary test2.zch)
+  (zippy-change-config dictionary test2.zch smart-space full)
+  (zippy-change-config output-character-mappings (! S-1))
+)
+(defzippy test.zch smart-space add-space-only)

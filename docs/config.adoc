@@ -7169,6 +7169,37 @@ gi	git
 gi f p	git fetch -p
 ----
 
+[[zippy-change-config]]
+**Changing the configuration at runtime**
+
+The `zippy-change-config` action switches the zippychord dictionary
+and options while kanata runs.
+It takes name-value pairs.
+The names are the `defzippy` option names
+and `dictionary $zippy-filename`, which replaces the zippy file.
+Only this action uses `dictionary`;
+`defzippy` keeps its file name as the first item.
+Each name can occur only once.
+Options that the action does not name keep their values from `defzippy`.
+The action with no pairs goes back to the `defzippy` configuration.
+A switch discards the zippy state in progress:
+a pending chord, a smart-space and the followups.
+Kanata validates each `zippy-change-config` action
+when it loads the configuration, so `defzippy` must exist.
+As with `defzippy`, a dictionary file that does not exist
+gives an empty dictionary.
+A live reload goes back to the `defzippy` configuration.
+
+.Sample kanata configuration
+[source]
+----
+(defzippy zippy-en.txt smart-space full)
+(defalias
+  zen (zippy-change-config)
+  zde (zippy-change-config dictionary zippy-de.txt smart-space add-space-only)
+)
+----
+
 **Description**
 
 Zippychord is yet another chording mechanism in Kanata.
