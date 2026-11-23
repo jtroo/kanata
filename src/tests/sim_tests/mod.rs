@@ -165,6 +165,16 @@ fn simulate_with_file_content<S: AsRef<str>>(
     sim: S,
     file_content: FxHashMap<String, String>,
 ) -> String {
+    simulate_notifying(cfg, sim, file_content, &None)
+}
+
+/// Like `simulate_with_file_content`, with a channel for the notifications for TCP clients.
+fn simulate_notifying<S: AsRef<str>>(
+    cfg: S,
+    sim: S,
+    file_content: FxHashMap<String, String>,
+    tx: &Option<std::sync::mpsc::SyncSender<kanata_tcp_protocol::ServerMessage>>,
+) -> String {
     init_log();
     let _lk = match CFG_PARSE_LOCK.lock() {
         Ok(guard) => guard,
@@ -178,7 +188,7 @@ fn simulate_with_file_content<S: AsRef<str>>(
                     let ticks = str::parse::<u128>(val).expect("valid num for tick");
                     let mut ticks_with_no_processing: Option<NonZeroU128> = None;
                     for t in 0..ticks {
-                        let _ = k.tick_ms(1, &None);
+                        let _ = k.tick_ms(1, tx);
                         let can_block = k.can_block_update_idle_waiting(1);
                         if can_block {
                             ticks_with_no_processing = NonZeroU128::new(ticks - t);

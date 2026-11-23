@@ -8,11 +8,19 @@ use std::time::{Duration, Instant};
 use parking_lot::Mutex;
 
 use kanata_tcp_protocol::{
-    CONFIG_FILE_RELOAD, ClientMessage, HOLD_ACTIVATED, LAYER_CHANGE, MESSAGE_PUSH, ServerMessage,
-    TAP_ACTIVATED,
+    CONFIG_FILE_RELOAD, ClientMessage, HOLD_ACTIVATED, LAYER_CHANGE, MESSAGE_PUSH, SEQ_STATE,
+    SeqPhase, ServerMessage, TAP_ACTIVATED,
 };
 
 use crate::{Kanata, TcpServer};
+
+fn seq_state() -> ServerMessage {
+    ServerMessage::SeqState {
+        prefix: "g".into(),
+        candidates: vec!["g r".into()],
+        phase: SeqPhase::Advanced,
+    }
+}
 
 fn notification_test_client() -> (
     TcpStream,
@@ -156,6 +164,9 @@ fn tcp_notifications_default_excludes_tap_hold_events() {
     notification_tx
         .send(ServerMessage::TapActivated { key: "a".into() })
         .expect("send tap activation");
+    notification_tx
+        .send(seq_state())
+        .expect("send sequence state");
 
     let mut line = String::new();
     reader.read_line(&mut line).expect("layer notification");
@@ -196,6 +207,7 @@ fn tcp_notifications_can_all_be_enabled() {
             TAP_ACTIVATED,
             MESSAGE_PUSH,
             CONFIG_FILE_RELOAD,
+            SEQ_STATE,
         ],
     );
     notification_tx
@@ -207,12 +219,16 @@ fn tcp_notifications_can_all_be_enabled() {
     notification_tx
         .send(ServerMessage::TapActivated { key: "a".into() })
         .expect("send tap activation");
+    notification_tx
+        .send(seq_state())
+        .expect("send sequence state");
     send_push_msg_and_reload(&notification_tx);
 
     for notification in [
         "LayerChange",
         "HoldActivated",
         "TapActivated",
+        "SeqState",
         "MessagePush",
         "ConfigFileReload",
     ] {
@@ -231,7 +247,7 @@ fn tcp_notifications_denied_with_keylogging_disabled() {
         "(defsrc a)
           (deflayer base a)",
     );
-    let keylogging_opts = &[HOLD_ACTIVATED, TAP_ACTIVATED];
+    let keylogging_opts = &[HOLD_ACTIVATED, TAP_ACTIVATED, SEQ_STATE];
     for opt in keylogging_opts {
         let subscribe = ClientMessage::Subscribe(vec![opt.to_string()]);
         stream

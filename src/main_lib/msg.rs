@@ -8,7 +8,7 @@ use anyhow::{Context, Result, bail};
 use kanata_state_machine::SocketAddrWrapper;
 use kanata_tcp_protocol::{
     CONFIG_FILE_RELOAD, ClientMessage, FakeKeyActionMessage, HOLD_ACTIVATED, LAYER_CHANGE,
-    MESSAGE_PUSH, ServerMessage, ServerResponse, TAP_ACTIVATED,
+    MESSAGE_PUSH, SEQ_STATE, ServerMessage, ServerResponse, TAP_ACTIVATED,
 };
 use std::io::{BufRead, BufReader, ErrorKind, Write};
 use std::net::{SocketAddr, TcpStream};
@@ -92,6 +92,9 @@ enum MsgCommand {
         /// Subscribe to config file reload messages.
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         config_file_reload: bool,
+        /// Subscribe to leader-sequence state messages.
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
+        seq_state: bool,
     },
 }
 
@@ -264,6 +267,7 @@ fn execute(
             tap_activated,
             message_push,
             config_file_reload,
+            seq_state,
         } => {
             let mut subscriptions = Vec::new();
             if layer_change {
@@ -280,6 +284,9 @@ fn execute(
             }
             if config_file_reload {
                 subscriptions.push(CONFIG_FILE_RELOAD.to_string());
+            }
+            if seq_state {
+                subscriptions.push(SEQ_STATE.to_string());
             }
             conn.send(&ClientMessage::Subscribe(subscriptions))?;
             conn.deadline = None;
@@ -499,6 +506,7 @@ mod tests {
                     tap_activated: true,
                     message_push: true,
                     config_file_reload: true,
+                    seq_state: true,
                 },
                 ClientMessage::RequestLayerNames {} => MsgCommand::ListLayers,
                 ClientMessage::RequestFakeKeyNames {} => MsgCommand::ListFakeKeys,

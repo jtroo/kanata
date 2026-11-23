@@ -11,13 +11,30 @@ pub const HOLD_ACTIVATED: &str = "HoldActivated";
 pub const TAP_ACTIVATED: &str = "TapActivated";
 pub const MESSAGE_PUSH: &str = "MessagePush";
 pub const CONFIG_FILE_RELOAD: &str = "ConfigFileReload";
-pub const VALID_SUBSCRIBE_OPTIONS: [&str; 5] = [
+pub const SEQ_STATE: &str = "SeqState";
+pub const VALID_SUBSCRIBE_OPTIONS: [&str; 6] = [
     LAYER_CHANGE,
     HOLD_ACTIVATED,
     TAP_ACTIVATED,
     MESSAGE_PUSH,
     CONFIG_FILE_RELOAD,
+    SEQ_STATE,
 ];
+
+/// What happened to a leader sequence (`sldr`/`defseq`) to cause a `SeqState` message.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SeqPhase {
+    /// A sequence leader action armed (or re-armed) sequence mode.
+    Started,
+    /// A key was added to the sequence and more keys are needed to finish it.
+    Advanced,
+    /// The keys typed completed a `defseq` sequence.
+    Completed,
+    /// Sequence mode ended without a match: invalid key or a cancel action.
+    Cancelled,
+    /// Sequence mode ended because `sequence-timeout` ran out.
+    TimedOut,
+}
 
 /// Messages sent from the server to connected clients.
 #[derive(Debug, Serialize, Deserialize)]
@@ -71,12 +88,22 @@ pub enum ServerMessage {
     TapActivated {
         key: String,
     },
+    /// Sent whenever leader sequence mode starts, advances or ends.
+    /// `prefix` is the keys typed so far, space separated, e.g. `"g r"`.
+    /// Keys typed while holding modifiers are written with prefixes, e.g. `"S-a"`.
+    /// `candidates` lists the configured sequences that `prefix` can still complete
+    /// (empty unless `phase` is `Started` or `Advanced`), in the same notation.
+    SeqState {
+        prefix: String,
+        candidates: Vec<String>,
+        phase: SeqPhase,
+    },
 }
 
 /// Returns true if the subscribe option logs user typing over TCP
 /// and returns false otherwise.
 pub fn subscribe_option_is_keylogging(opt: &str) -> bool {
-    matches!(opt, TAP_ACTIVATED | HOLD_ACTIVATED)
+    matches!(opt, TAP_ACTIVATED | HOLD_ACTIVATED | SEQ_STATE)
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -299,6 +326,39 @@ mod tests {
         };
         let json = serde_json::to_string(&msg).unwrap();
         assert_eq!(json, r#"{"TapActivated":{"key":"a"}}"#);
+    }
+
+    #[test]
+    fn test_seq_state_json_format() {
+        let msg = ServerMessage::SeqState {
+            prefix: "g".to_string(),
+            candidates: vec!["g r".to_string(), "g t".to_string()],
+            phase: SeqPhase::Advanced,
+        };
+        let json = serde_json::to_string(&msg).unwrap();
+        assert_eq!(
+            json,
+            r#"{"SeqState":{"prefix":"g","candidates":["g r","g t"],"phase":"Advanced"}}"#
+        );
+        match serde_json::from_str(&json).unwrap() {
+            ServerMessage::SeqState {
+                prefix,
+                candidates,
+                phase,
+            } => {
+                assert_eq!(prefix, "g");
+                assert_eq!(candidates, ["g r", "g t"]);
+                assert_eq!(phase, SeqPhase::Advanced);
+            }
+            _ => panic!("Expected SeqState"),
+        }
+    }
+
+    #[test]
+    fn test_seq_state_is_a_valid_keylogging_option() {
+        assert!(VALID_SUBSCRIBE_OPTIONS.contains(&SEQ_STATE));
+        assert!(subscribe_option_is_keylogging(SEQ_STATE));
+        assert!(!subscribe_option_is_keylogging(LAYER_CHANGE));
     }
 
     #[test]

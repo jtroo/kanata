@@ -6163,14 +6163,21 @@ These are sent automatically when events occur:
 
 | `{"TapActivated":{"key":"a"}}`
 | Sent when a tap-hold key triggers its tap action. The `key` field is the physical key name.
+
+| `{"SeqState":{"prefix":"g","candidates":["g r","g t"],"phase":"Advanced"}}`
+| Sent when leader sequence mode (<<sequences,`sldr`>>) starts, advances or ends.
+`prefix` is the keys typed so far, separated by spaces, with modifiers written as `S-`, `C-`, `A-`, `AG-` and `M-` prefixes.
+`candidates` lists the `defseq` sequences that `prefix` can still complete, in the same notation.
+`phase` is `Started`, `Advanced`, `Completed`, `Cancelled` or `TimedOut`;
+`candidates` is empty for the last three.
 |===
 
 By default, a client receives `LayerChange`, `ConfigFileReload` and `MessagePush`.
 A client can choose the notifications it receives with
 `{"Subscribe":["LayerChange","MessagePush"]}`.
 The list replaces the current selection; an empty list turns all of them off.
-Valid options are `LayerChange`, `ConfigFileReload`, `MessagePush`, `HoldActivated` and `TapActivated`.
-`HoldActivated` and `TapActivated` require <<danger-tcp-allow-keylogging>>.
+Valid options are `LayerChange`, `ConfigFileReload`, `MessagePush`, `HoldActivated`, `TapActivated` and `SeqState`.
+`HoldActivated`, `TapActivated` and `SeqState` require <<danger-tcp-allow-keylogging>>.
 
 ===== Query Responses
 
@@ -6193,7 +6200,7 @@ These are sent in response to client queries:
 | Response to `RequestCurrentLayerInfo`. Contains the layer name and its full configuration text.
 
 | `{"HelloOk":{"version":"1.11.0","protocol":1,"capabilities":[...]}}`
-| Response to `Hello`. Contains server version, protocol version, and supported capabilities. Includes `hold-activated` and `tap-activated`.
+| Response to `Hello`. Contains server version, protocol version, and supported capabilities. Includes `hold-activated`, `tap-activated` and `seq-state`.
 
 | `{"ReloadResult":{"ok":true}}`
 | Response to reload commands when `wait` was `true`. Indicates whether the config reload succeeded. If timed out, includes `timeout_ms`.
@@ -6509,6 +6516,12 @@ precisely, the action triggered is:
     https (macro h t t p s S-; / /)
 )
 ----
+
+With <<danger-tcp-allow-keylogging>> enabled,
+TCP clients can subscribe to `SeqState` messages to follow the progress of a sequence,
+for example to show the available continuations in an overlay.
+This helps most with `hidden-suppressed` <<sequence-input-mode,input mode>>,
+where the typed keys are otherwise not visible anywhere.
 
 There are 10 special keys with names `nop0-nop9` which kanata treats specially.
 Kanata will never send OS events for these keys
