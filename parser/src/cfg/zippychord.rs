@@ -149,13 +149,14 @@ mod inner {
 
     use parking_lot::Mutex;
     use std::collections::BTreeMap;
+    use std::path::{Component, PathBuf};
 
     /// Parsed dictionaries of one config parse, so that each file is read once
     /// and each distinct dictionary is shared.
     #[derive(Default)]
     pub(crate) struct ZchDictionaries {
-        files: HashMap<String, String>,
-        chords: HashMap<(String, ZchCharMappings), Arc<ZchPossibleChords>>,
+        files: HashMap<PathBuf, String>,
+        chords: HashMap<(PathBuf, ZchCharMappings), Arc<ZchPossibleChords>>,
     }
 
     type ZchCharMappings = BTreeMap<char, Vec<ZchOutput>>;
@@ -655,18 +656,25 @@ mod inner {
             config.zch_cfg_smart_space_punctuation.shrink_to_fit();
         }
 
-        let key = (file_name.to_owned(), user_cfg_char_to_output);
+        // The file reader refuses a second read of one file, so `x` and `./x` must share a key.
+        // shortcut: only `.` components are removed, so `../dir/x`, absolute paths and symlinks
+        // still fail at load; resolve the path like the file reader if users hit that.
+        let file_path: PathBuf = Path::new(file_name)
+            .components()
+            .filter(|c| *c != Component::CurDir)
+            .collect();
+        let key = (file_path, user_cfg_char_to_output);
         if let Some(chords) = dicts.chords.get(&key) {
             return Ok((chords.clone(), config));
         }
-        let user_cfg_char_to_output = &key.1;
-        if !dicts.files.contains_key(file_name) {
+        let (file_path, user_cfg_char_to_output) = &key;
+        if !dicts.files.contains_key(file_path) {
             let content = f
                 .get_file_content(file_name.as_ref())
                 .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
-            dicts.files.insert(file_name.to_owned(), content);
+            dicts.files.insert(file_path.clone(), content);
         }
-        let input_data = &dicts.files[file_name];
+        let input_data = &dicts.files[file_path];
         let res = input_data
             .lines()
             .enumerate()

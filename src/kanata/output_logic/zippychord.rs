@@ -256,26 +256,14 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
-        if self.zch_chords.is_empty() {
-            return kb.press_key(osc);
-        }
         match osc {
-            OsCode::KEY_LEFTSHIFT => {
-                self.zchd.zchd_is_lsft_active = true;
-                return kb.press_key(osc);
-            }
-            OsCode::KEY_RIGHTSHIFT => {
-                self.zchd.zchd_is_rsft_active = true;
-                return kb.press_key(osc);
-            }
-            OsCode::KEY_RIGHTALT => {
-                self.zchd.zchd_is_altgr_active = true;
-                return kb.press_key(osc);
-            }
-            osc if osc.is_zippy_ignored() => {
-                return kb.press_key(osc);
-            }
+            OsCode::KEY_LEFTSHIFT => self.zchd.zchd_is_lsft_active = true,
+            OsCode::KEY_RIGHTSHIFT => self.zchd.zchd_is_rsft_active = true,
+            OsCode::KEY_RIGHTALT => self.zchd.zchd_is_altgr_active = true,
             _ => {}
+        }
+        if self.zch_chords.is_empty() || osc.is_zippy_ignored() {
+            return kb.press_key(osc);
         }
         if self.zchd.zchd_smart_space_state == ZchSmartSpaceState::Sent
             && self
@@ -552,22 +540,13 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
-        if self.zch_chords.is_empty() {
-            return kb.release_key(osc);
-        }
         match osc {
-            OsCode::KEY_LEFTSHIFT => {
-                self.zchd.zchd_is_lsft_active = false;
-            }
-            OsCode::KEY_RIGHTSHIFT => {
-                self.zchd.zchd_is_rsft_active = false;
-            }
-            OsCode::KEY_RIGHTALT => {
-                self.zchd.zchd_is_altgr_active = false;
-            }
+            OsCode::KEY_LEFTSHIFT => self.zchd.zchd_is_lsft_active = false,
+            OsCode::KEY_RIGHTSHIFT => self.zchd.zchd_is_rsft_active = false,
+            OsCode::KEY_RIGHTALT => self.zchd.zchd_is_altgr_active = false,
             _ => {}
         }
-        if osc.is_zippy_ignored() {
+        if self.zch_chords.is_empty() || osc.is_zippy_ignored() {
             return kb.release_key(osc);
         }
         self.zchd.zchd_state_change(&self.zch_cfg);

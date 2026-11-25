@@ -793,7 +793,10 @@ fn sim_zippychord_change_config_keeps_unnamed_options() {
 
 #[test]
 fn sim_zippychord_live_reload_resets_to_defzippy() {
-    let dir = std::env::temp_dir().join("kanata-sim-zippy-change-config-reload");
+    let dir = std::env::temp_dir().join(format!(
+        "kanata-sim-zippy-change-config-reload-{}",
+        std::process::id()
+    ));
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("file"), "dy\tday").unwrap();
     std::fs::write(dir.join("file2"), "ab\tabc").unwrap();
@@ -844,5 +847,30 @@ fn sim_zippychord_live_reload_resets_to_defzippy() {
             .no_releases()
             .no_time()
             .to_ascii(),
+    );
+}
+
+#[test]
+fn sim_zippychord_change_config_tracks_shift_while_dictionary_is_empty() {
+    let run = |sim: &str| {
+        let mut fcontent = FxHashMap::default();
+        fcontent.insert("file".into(), "dy\tday".into());
+        fcontent.insert("empty".into(), "".into());
+        simulate_with_file_content(
+            "(defsrc lalt lctl lsft)
+             (deflayer base (zippy-change-config dictionary empty) (zippy-change-config) lsft)
+             (defzippy file)",
+            sim,
+            fcontent,
+        )
+        .no_time()
+        .to_ascii()
+    };
+    assert_eq!(
+        run("d:lsft t:10 u:lsft t:10 d:d d:y t:10 u:d u:y t:1000"),
+        run(
+            "d:lsft t:10 d:lalt u:lalt t:10 u:lsft t:10 d:lctl u:lctl t:10 \
+             d:d d:y t:10 u:d u:y t:1000"
+        ),
     );
 }
