@@ -73,32 +73,39 @@ pub(crate) fn parse_zippy_change_config(
     let configs = configs
         .as_mut()
         .expect("zippy-change-config actions are parsed before defzippy");
-    let idx = u16::try_from(configs.len())
+    // Index 0 is `defzippy`.
+    let idx = u16::try_from(configs.len() + 1)
         .map_err(|_| anyhow_expr!(&ac[0], "Too many {ZIPPY_CHANGE_CONFIG} actions"))?;
     configs.push(ac.to_vec());
     custom(CustomAction::ZippyChangeConfig(idx), &s.a)
 }
 
-/// Parses each recorded `zippy-change-config` action as `defzippy` with the action's
-/// name-value pairs replacing those of `defzippy`. `dictionary` replaces the file name.
-pub(crate) fn parse_zippy_change_configs(
+/// Parses `defzippy` as entry 0, then each recorded `zippy-change-config` action as
+/// `defzippy` with the action's name-value pairs replacing those of `defzippy`.
+/// `dictionary` replaces the file name.
+pub(crate) fn parse_zippy_configs(
     defzippy: Option<&[SExpr]>,
     s: &ParserState,
     f: &mut FileContentProvider,
     dicts: &mut ZchDictionaries,
 ) -> Result<Vec<(Arc<ZchPossibleChords>, ZchConfig)>> {
     const DICTIONARY: &str = "dictionary";
-    s.zippy_change_configs
+    let actions = s
+        .zippy_change_configs
         .take()
-        .expect("zippy-change-config actions are taken once")
-        .iter()
-        .map(|ac| {
-            let Some(defzippy) = defzippy else {
-                bail_expr!(
-                    &ac[0],
-                    "{ZIPPY_CHANGE_CONFIG} requires defzippy to be defined"
-                );
-            };
+        .expect("zippy-change-config actions are taken once");
+    let Some(defzippy) = defzippy else {
+        if let Some(ac) = actions.first() {
+            bail_expr!(
+                &ac[0],
+                "{ZIPPY_CHANGE_CONFIG} requires defzippy to be defined"
+            );
+        }
+        return Ok(vec![]);
+    };
+    let mut configs = vec![parse_zippy(defzippy, s, f, dicts)?];
+    for ac in &actions {
+        configs.push({
             let (pairs, rem) = ac[1..].as_chunks::<2>();
             if let Some(name) = rem.first() {
                 bail_expr!(name, "zippy config name is missing its value");
@@ -133,9 +140,10 @@ pub(crate) fn parse_zippy_change_configs(
                     merged.extend_from_slice(pair);
                 }
             }
-            parse_zippy(&merged, s, f, dicts)
-        })
-        .collect()
+            parse_zippy(&merged, s, f, dicts)?
+        });
+    }
+    Ok(configs)
 }
 
 #[cfg(feature = "zippychord")]

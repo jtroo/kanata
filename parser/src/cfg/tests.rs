@@ -485,19 +485,25 @@ fn zippy_change_config_validated_at_parse() {
 fn zippy_change_config_reads_each_dictionary_file_once() {
     let _lk = lock(&CFG_PARSE_LOCK);
     let cfg = new_from_file(&PathBuf::from("./test_cfgs/zippy_change_config.kbd")).unwrap();
-    let (defzippy, defzippy_cfg) = cfg.zippy.unwrap();
-    let [reset, options_only, dict, dict_and_options, mappings] = &cfg.zippy_change_configs[..]
+    let [
+        (defzippy, defzippy_cfg),
+        reset,
+        options_only,
+        dict,
+        dict_and_options,
+        mappings,
+    ] = &cfg.zippy_configs[..]
     else {
-        panic!("expected 5 actions");
+        panic!("expected defzippy and 5 actions");
     };
-    assert!(Arc::ptr_eq(&defzippy, &reset.0));
-    assert!(Arc::ptr_eq(&defzippy, &options_only.0));
+    assert!(Arc::ptr_eq(defzippy, &reset.0));
+    assert!(Arc::ptr_eq(defzippy, &options_only.0));
     assert!(Arc::ptr_eq(&dict.0, &dict_and_options.0));
-    assert!(!Arc::ptr_eq(&defzippy, &dict.0));
-    assert!(!Arc::ptr_eq(&defzippy, &mappings.0));
+    assert!(!Arc::ptr_eq(defzippy, &dict.0));
+    assert!(!Arc::ptr_eq(defzippy, &mappings.0));
     assert_eq!(
         [
-            &defzippy_cfg,
+            defzippy_cfg,
             &reset.1,
             &options_only.1,
             &dict.1,

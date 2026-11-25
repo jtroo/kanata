@@ -316,10 +316,9 @@ pub struct Cfg {
     pub fake_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub max_key_timing_check: u16,
-    /// Zipchord-like configuration.
-    pub zippy: Option<(Arc<ZchPossibleChords>, ZchConfig)>,
-    /// Zippy configurations installed by `zippy-change-config`, indexed by its action.
-    pub zippy_change_configs: Vec<(Arc<ZchPossibleChords>, ZchConfig)>,
+    /// Zipchord-like configurations: `defzippy` at index 0, then one per
+    /// `zippy-change-config` action, which stores its index. Empty without `defzippy`.
+    pub zippy_configs: Vec<(Arc<ZchPossibleChords>, ZchConfig)>,
     /// Input device ID mappings from `definputdevices`.
     pub input_devices: Option<Vec<(std::num::NonZeroU8, InputDeviceMatcher)>>,
     /// Gamepad config declared by `defgamepad`. `None` without one; mapped
@@ -417,8 +416,7 @@ fn populate_cfg_with_icfg(icfg: IntermediateCfg, s: ParserState) -> Cfg {
         overrides: icfg.overrides,
         fake_keys,
         max_key_timing_check,
-        zippy: icfg.zippy,
-        zippy_change_configs: icfg.zippy_change_configs,
+        zippy_configs: icfg.zippy_configs,
         input_devices: s.input_devices,
         gamepad: s.gamepad,
     }
@@ -434,8 +432,7 @@ pub struct IntermediateCfg {
     pub overrides: Overrides,
     pub chords_v2: Option<ChordsV2<'static, KanataCustom>>,
     pub start_action: Option<&'static KanataAction>,
-    pub zippy: Option<(Arc<ZchPossibleChords>, ZchConfig)>,
-    pub zippy_change_configs: Vec<(Arc<ZchPossibleChords>, ZchConfig)>,
+    pub zippy_configs: Vec<(Arc<ZchPossibleChords>, ZchConfig)>,
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation
@@ -1035,25 +1032,18 @@ pub fn parse_cfg_raw_string(
         .filter(defzippy_filter)
         .collect::<Vec<_>>();
     let mut zippy_dicts = ZchDictionaries::default();
-    let zippy = match zippy_exprs.len() {
-        0 => None,
-        1 => {
-            let zippy = parse_zippy(zippy_exprs[0], s, file_content_provider, &mut zippy_dicts)?;
-            Some(zippy)
-        }
-        _ => {
-            let spanned = spanned_root_exprs
-                .iter()
-                .filter(defzippy_spanned_filter)
-                .nth(1)
-                .expect("> 2 overrides");
-            bail_span!(
-                spanned,
-                "Only one defzippy allowed, found more.\nDelete the extras."
-            )
-        }
-    };
-    let zippy_change_configs = parse_zippy_change_configs(
+    if zippy_exprs.len() > 1 {
+        let spanned = spanned_root_exprs
+            .iter()
+            .filter(defzippy_spanned_filter)
+            .nth(1)
+            .expect("> 2 overrides");
+        bail_span!(
+            spanned,
+            "Only one defzippy allowed, found more.\nDelete the extras."
+        )
+    }
+    let zippy_configs = parse_zippy_configs(
         zippy_exprs.first().map(|exprs| &exprs[..]),
         s,
         file_content_provider,
@@ -1080,8 +1070,7 @@ pub fn parse_cfg_raw_string(
         overrides,
         chords_v2,
         start_action,
-        zippy,
-        zippy_change_configs,
+        zippy_configs,
     })
 }
 
