@@ -66,3 +66,26 @@ fn unicode_multi() {
     .to_ascii();
     assert_eq!("outU:a t:1ms outU:b", result);
 }
+
+#[test]
+fn unicode_multi_exceeds_old_queue_limits() {
+    // Regression test for >9 custom actions (previously dropped from the 2nd item)
+    // and >17 custom actions (previously panicked in custom release queue on release).
+    let result = simulate(
+        "
+        (defsrc a b)
+        (deflayer l
+            (multi (unicode a) (unicode b) (unicode c) (unicode d) (unicode e) (unicode f) (unicode g) (unicode h) (unicode i) (unicode j) (unicode k))
+            (multi (unicode a) (unicode b) (unicode c) (unicode d) (unicode e) (unicode f) (unicode g) (unicode h) (unicode i) (unicode j) (unicode k) (unicode l) (unicode m) (unicode n) (unicode o) (unicode p) (unicode q) (unicode r) (unicode s) (unicode t))
+        )
+        ",
+        "d:KeyA t:50 u:KeyA t:50 d:KeyB t:50 u:KeyB t:50",
+    )
+    .no_time();
+    assert_eq!(
+        "outU:a outU:b outU:c outU:d outU:e outU:f outU:g outU:h outU:i outU:j outU:k \
+         outU:a outU:b outU:c outU:d outU:e outU:f outU:g outU:h outU:i outU:j \
+         outU:k outU:l outU:m outU:n outU:o outU:p outU:q outU:r outU:s outU:t",
+        result
+    );
+}

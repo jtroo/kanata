@@ -25,7 +25,7 @@ pub use kanata_keyberon_macros::*;
 mod contextual_execution;
 use contextual_execution::*;
 
-use std::num::NonZeroU16;
+use std::{collections::VecDeque, num::NonZeroU16};
 
 use crate::chord::*;
 use crate::key_code::KeyCode;
@@ -68,20 +68,11 @@ pub(crate) type Queue = ArrayDeque<Queued, QUEUE_SIZE, arraydeque::behavior::Wra
 /// that occur during a Waiting event.
 type PressedQueue = ArrayDeque<KCoord, QUEUE_SIZE>;
 
-/// The maximum number of actions that can be activated concurrently via chord decomposition or
-/// activation of multiple switch cases using fallthrough.
-pub const ACTION_QUEUE_LEN: usize = 8;
-
-pub const CUSTOM_EVENT_RELEASE_QUEUE_LEN: usize = 16;
-
-/// The queue is currently only used for chord decomposition when a longer chord does not result in
-/// an action, but splitting it into smaller chords would. The buffer size of 8 should be more than
-/// enough for real world usage, but if one wanted to be extra safe, this should be ChordKeys::BITS
-/// since that should guarantee that all potentially queueable actions can fit.
-type ActionQueue<'a, T> =
-    ArrayDeque<QueuedAction<'a, T>, ACTION_QUEUE_LEN, arraydeque::behavior::Wrapping>;
-type CustomEventReleaseQueue<'a, T> =
-    ArrayDeque<&'a T, CUSTOM_EVENT_RELEASE_QUEUE_LEN, arraydeque::behavior::Wrapping>;
+/// Queue of actions deferred across ticks (e.g., extra custom actions in `MultipleActions`,
+/// chord decomposition, and switch fallthrough).
+type ActionQueue<'a, T> = VecDeque<QueuedAction<'a, T>>;
+/// Queue of deferred custom action release events emitted one per tick.
+type CustomEventReleaseQueue<'a, T> = VecDeque<&'a T>;
 type Delay = u16;
 pub(crate) type QueuedAction<'a, T> = Option<(KCoord, Delay, &'a Action<'a, T>, LayerStack)>;
 
@@ -405,9 +396,7 @@ impl<'a, T: 'a> State<'a, T> {
                 match custom {
                     CustomEvent::NoEvent => custom.update(CustomEvent::Release(value)),
                     _ => {
-                        if custom_release_queue.push_back(value).is_some() {
-                            panic!("overflowed custom action release queue");
-                        }
+                        custom_release_queue.push_back(value);
                     }
                 }
                 None
@@ -954,7 +943,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                 // and could result in an infinite loop, because
                 // the queue activating code falls back to top-level resolution order
                 // if the stored layer stack is empty.
-                let _ = action_queue.push_back(Some((coord, delay, action, Default::default())));
+                action_queue.push_back(Some((coord, delay, action, Default::default())));
             } else {
                 end -= 1;
                 // shrink from end until something is found, or have checked up to and including
@@ -968,12 +957,7 @@ impl<'a, T: std::fmt::Debug> WaitingState<'a, T> {
                         .unwrap_or(0);
                     if let Some(action) = config.get_chord(chord_mask) {
                         let coord = get_coord_for_chord(chord_mask);
-                        let _ = action_queue.push_back(Some((
-                            coord,
-                            delay,
-                            action,
-                            Default::default(),
-                        )));
+                        action_queue.push_back(Some((coord, delay, action, Default::default())));
                         break;
                     }
                     end -= 1;
@@ -1287,8 +1271,8 @@ impl<'a, const C: usize, const R: usize, T: 'a + Copy + std::fmt::Debug> Layout<
             keys_to_suppress_for_one_cycle: Vec::new(),
             last_press_tracker: Default::default(),
             active_sequences: ArrayDeque::new(),
-            action_queue: ArrayDeque::new(),
-            custom_event_release_queue: ArrayDeque::new(),
+            action_queue: VecDeque::new(),
+            custom_event_release_queue: VecDeque::new(),
             rpt_action: None,
             historical_keys: History::new(),
             historical_inputs: History::new(),
@@ -5578,5 +5562,54 @@ mod test {
         // Tap-dance resolution must not set tap or hold activated flags.
         assert!(layout.tap_hold_tracker.take_hold_activated().is_none());
         assert!(layout.tap_hold_tracker.take_tap_activated().is_none());
+    }
+
+    #[test]
+    fn multiple_custom_actions_not_truncated() {
+        const COUNT: i32 = 20;
+        static ACTIONS: &[Action<i32>] = &[
+            Action::Custom(0),
+            Action::Custom(1),
+            Action::Custom(2),
+            Action::Custom(3),
+            Action::Custom(4),
+            Action::Custom(5),
+            Action::Custom(6),
+            Action::Custom(7),
+            Action::Custom(8),
+            Action::Custom(9),
+            Action::Custom(10),
+            Action::Custom(11),
+            Action::Custom(12),
+            Action::Custom(13),
+            Action::Custom(14),
+            Action::Custom(15),
+            Action::Custom(16),
+            Action::Custom(17),
+            Action::Custom(18),
+            Action::Custom(19),
+        ];
+        static LAYERS: Layers<1, 1, i32> = &[[[MultipleActions(&ACTIONS)]]];
+
+        let mut layout = Layout::new(LAYERS);
+        layout.event(Press(0, 0));
+        let pressed: std::vec::Vec<i32> = (0..COUNT)
+            .map(|_| match layout.tick() {
+                CustomEvent::Press(&v) => v,
+                other => panic!("expected CustomEvent::Press, got {other:?}"),
+            })
+            .collect();
+        assert_eq!(pressed, (0..COUNT).collect::<std::vec::Vec<_>>());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
+
+        layout.event(Release(0, 0));
+        let released: std::vec::Vec<i32> = (0..COUNT)
+            .map(|_| match layout.tick() {
+                CustomEvent::Release(&v) => v,
+                other => panic!("expected CustomEvent::Release, got {other:?}"),
+            })
+            .collect();
+        assert_eq!(released, (0..COUNT).collect::<std::vec::Vec<_>>());
+        assert_eq!(CustomEvent::NoEvent, layout.tick());
     }
 }

@@ -406,9 +406,6 @@ where
     Fork(&'a ForkConfig<'a, T>),
     /// Action that can activate 0 to N actions based on what keys are currently
     /// active and the boolean logic of each case.
-    ///
-    /// The maximum number of actions that can activate the same time is governed by
-    /// `ACTION_QUEUE_LEN`.
     Switch(&'a Switch<'a, T>),
     /// Disregard the entire layer stack, i.e. the current base layer and any while-held layers,
     /// and select the action from `Layout.src_keys`.
