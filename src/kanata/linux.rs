@@ -308,7 +308,7 @@ fn run_debouncer(
             match rx.try_recv() {
                 Ok(kev) => {
                     log::debug!("Received event: {:?}", kev);
-                    has_pending_deadlines = algorithm.process_event(kev, &out_tx);
+                    has_pending_deadlines = algorithm.process_event(kev, &out_tx, Instant::now());
                 }
                 Err(TryRecvError::Empty) => {
                     // No events available, wait a small duration to prevent busy looping
@@ -321,7 +321,7 @@ fn run_debouncer(
             match rx.recv() {
                 Ok(kev) => {
                     log::debug!("Received event: {:?}", kev);
-                    has_pending_deadlines = algorithm.process_event(kev, &out_tx);
+                    has_pending_deadlines = algorithm.process_event(kev, &out_tx, Instant::now());
                 }
                 Err(_) => return Ok(()),
             }

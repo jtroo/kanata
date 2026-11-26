@@ -11,7 +11,14 @@ pub trait Debounce: Send + Sync {
     /// Returns the debounce time in milliseconds
     fn debounce_time(&self) -> u16;
 
-    fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) -> bool;
+    /// Handle one key event that happened at `now`, sending whatever it lets through.
+    /// Returns whether there are pending events, which need `tick` to be called.
+    fn process_event(
+        &mut self,
+        event: KeyEvent,
+        process_tx: &Sender<KeyEvent>,
+        now: Instant,
+    ) -> bool;
 
     /// Optional tick function to process delayed events (deadlines),
     /// returns whether there are pending events

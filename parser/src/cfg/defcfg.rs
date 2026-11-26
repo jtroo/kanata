@@ -481,14 +481,22 @@ pub fn parse_defcfg(expr: &[SExpr]) -> Result<CfgOptions> {
                         }
                     }
                     "debounce-duration" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             cfg.linux_opts.debounce_duration_ms =
                                 parse_cfg_val_u16(val, label, false)?;
                         }
                     }
                     "debounce-algorithm" => {
-                        #[cfg(any(target_os = "linux", target_os = "unknown"))]
+                        #[cfg(any(
+                            target_os = "linux",
+                            target_os = "android",
+                            target_os = "unknown"
+                        ))]
                         {
                             let algorithm = sexpr_to_str_or_err(val, label)?;
                             cfg.linux_opts.debounce_algorithm = algorithm

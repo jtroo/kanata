@@ -42,8 +42,12 @@ impl Debounce for SymEagerPk {
         self.debounce_duration.as_millis() as u16
     }
 
-    fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) -> bool {
-        let now = Instant::now();
+    fn process_event(
+        &mut self,
+        event: KeyEvent,
+        process_tx: &Sender<KeyEvent>,
+        now: Instant,
+    ) -> bool {
         let oscode = event.code;
 
         // If event is a repeat, process it immediately

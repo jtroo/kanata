@@ -379,9 +379,9 @@ pub struct Kanata {
     #[cfg(feature = "tcp_server")]
     last_reload_ok: bool,
     /// Debounce settings, read once when the event loop starts. Live reload does not apply them.
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     debounce_duration_ms: u16,
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     debounce_algorithm: kanata_parser::cfg::debounce_algorithm::DebounceAlgorithm,
 }
 
@@ -623,9 +623,9 @@ impl Kanata {
             start_time: web_time::Instant::now(),
             #[cfg(feature = "tcp_server")]
             last_reload_ok: true,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             debounce_duration_ms: cfg.options.linux_opts.debounce_duration_ms,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             debounce_algorithm: cfg.options.linux_opts.debounce_algorithm,
         })
     }
@@ -796,9 +796,9 @@ impl Kanata {
             start_time: web_time::Instant::now(),
             #[cfg(feature = "tcp_server")]
             last_reload_ok: true,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             debounce_duration_ms: cfg.options.linux_opts.debounce_duration_ms,
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "android"))]
             debounce_algorithm: cfg.options.linux_opts.debounce_algorithm,
         })
     }

@@ -33,8 +33,12 @@ impl Debounce for AsymEagerDeferPk {
         self.debounce_duration.as_millis() as u16
     }
 
-    fn process_event(&mut self, event: KeyEvent, process_tx: &Sender<KeyEvent>) -> bool {
-        let now = Instant::now();
+    fn process_event(
+        &mut self,
+        event: KeyEvent,
+        process_tx: &Sender<KeyEvent>,
+        now: Instant,
+    ) -> bool {
         let oscode = event.code;
 
         match event.value {
