@@ -5515,6 +5515,49 @@ Thus the output bus type is configurable.
 )
 ----
 
+[[linux-only-debounce-duration]]
+=== Linux only: debounce-duration and debounce-algorithm
+
+Debouncing filters out keyboard 'chatter' or 'double taps':
+a faulty key switch that reports several presses or releases for one physical press.
+`debounce-duration` sets the debounce time in milliseconds.
+The default, 0, turns debouncing off.
+
+Debouncing applies to every key event from the devices kanata reads,
+before kanata does anything else with it,
+so it also covers keys that are not in `defsrc`.
+Scroll events are not debounced.
+
+`debounce-algorithm` selects how key events are filtered.
+The names follow
+https://github.com/qmk/qmk_firmware/blob/master/docs/feature_debounce_type.md[QMK's debounce types].
+Debounce times apply to each key separately.
+
+* `asym_eager_defer_pk` (default): a press is sent immediately,
+and further presses of that key within the debounce time are ignored.
+A release is sent once the key has stayed released for the debounce time.
+This adds no delay to key presses.
+* `sym_eager_pk`: any change is sent immediately,
+then the key is ignored for the debounce time.
+If the key ended up in a different state by then, that state is sent.
+* `sym_defer_pk`: a change is sent once the key has stayed in its new state
+for the debounce time.
+Every press and release is delayed by the debounce time.
+
+Debouncing applies to all devices kanata reads,
+so prefer the default unless a keyboard needs otherwise.
+
+Live reload does not apply changes to these options. Restart kanata instead.
+
+.Example:
+[source]
+----
+(defcfg
+  debounce-duration 25 ;; Set debounce duration to 25ms
+  debounce-algorithm asym_eager_defer_pk
+)
+----
+
 [[macos-only-macos-dev-names-include]]
 === macOS only: macos-dev-names-include
 
