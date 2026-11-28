@@ -129,6 +129,9 @@ mod unknown;
 mod caps_word;
 pub use caps_word::*;
 
+pub mod debounce;
+pub use debounce::*;
+
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
@@ -377,6 +380,11 @@ pub struct Kanata {
     /// Whether last reload was successful
     #[cfg(feature = "tcp_server")]
     last_reload_ok: bool,
+    /// Debounce settings, read once when the event loop starts. Live reload does not apply them.
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    debounce_duration_ms: u16,
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    debounce_algorithm: kanata_parser::cfg::debounce_algorithm::DebounceAlgorithm,
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -620,6 +628,10 @@ impl Kanata {
             start_time: web_time::Instant::now(),
             #[cfg(feature = "tcp_server")]
             last_reload_ok: true,
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            debounce_duration_ms: cfg.options.linux_opts.debounce_duration_ms,
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            debounce_algorithm: cfg.options.linux_opts.debounce_algorithm,
         })
     }
 
@@ -792,6 +804,10 @@ impl Kanata {
             start_time: web_time::Instant::now(),
             #[cfg(feature = "tcp_server")]
             last_reload_ok: true,
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            debounce_duration_ms: cfg.options.linux_opts.debounce_duration_ms,
+            #[cfg(any(target_os = "linux", target_os = "android"))]
+            debounce_algorithm: cfg.options.linux_opts.debounce_algorithm,
         })
     }
 

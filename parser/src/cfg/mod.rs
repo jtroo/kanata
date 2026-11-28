@@ -158,6 +158,8 @@ use kanata_keyberon::layout::*;
 type HashSet<T> = rustc_hash::FxHashSet<T>;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
+pub mod debounce_algorithm;
+
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
