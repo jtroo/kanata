@@ -71,7 +71,45 @@ impl<T> Trie<T> {
         }
     }
 
+    /// Returns every key that starts with `prefix`, including `prefix` itself if it is a key.
+    pub fn keys_with_prefix<'a>(
+        &'a self,
+        prefix: &'a [u16],
+    ) -> impl Iterator<Item = Vec<TrieKeyElement>> + 'a {
+        self.inner.iter_prefix(cast_slice(prefix)).map(|(key, _)| {
+            let (elements, _) = key.as_chunks::<2>();
+            elements
+                .iter()
+                .map(|&bytes| TrieKeyElement::from_ne_bytes(bytes))
+                .collect()
+        })
+    }
+
     pub fn is_empty(&self) -> bool {
         self.inner.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keys_with_prefix_lists_every_key_below_the_prefix() {
+        let mut trie = Trie::new();
+        trie.insert([1u16, 2], ());
+        trie.insert([1u16, 3, 4], ());
+        trie.insert([2u16, 2], ());
+        // Elements sharing a byte with the prefix element must not match.
+        trie.insert([0x0101u16], ());
+        trie.insert([0x0102u16], ());
+
+        let mut keys: Vec<_> = trie.keys_with_prefix(&[1]).collect();
+        keys.sort();
+        assert_eq!(keys, [vec![1, 2], vec![1, 3, 4]]);
+        assert_eq!(trie.keys_with_prefix(&[2]).count(), 1);
+        assert_eq!(trie.keys_with_prefix(&[9]).count(), 0);
+        // The empty prefix lists the whole trie.
+        assert_eq!(trie.keys_with_prefix(&[]).count(), 5);
     }
 }

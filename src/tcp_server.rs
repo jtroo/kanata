@@ -28,6 +28,8 @@ const MESSAGE_PUSH_SUBSCRIPTION: u8 = 1 << 3;
 #[cfg(feature = "tcp_server")]
 const CONFIG_FILE_RELOAD_SUBSCRIPTION: u8 = 1 << 4;
 #[cfg(feature = "tcp_server")]
+const SEQ_STATE_SUBSCRIPTION: u8 = 1 << 5;
+#[cfg(feature = "tcp_server")]
 const DEFAULT_SUBSCRIPTIONS: u8 =
     LAYER_CHANGE_SUBSCRIPTION | MESSAGE_PUSH_SUBSCRIPTION | CONFIG_FILE_RELOAD_SUBSCRIPTION;
 
@@ -55,6 +57,7 @@ impl Connection {
                 TAP_ACTIVATED => TAP_ACTIVATED_SUBSCRIPTION,
                 MESSAGE_PUSH => MESSAGE_PUSH_SUBSCRIPTION,
                 CONFIG_FILE_RELOAD => CONFIG_FILE_RELOAD_SUBSCRIPTION,
+                SEQ_STATE => SEQ_STATE_SUBSCRIPTION,
                 _ => {
                     return Err(format!(
                         "unknown subscription option {option:?}; valid options: {}",
@@ -74,6 +77,7 @@ impl Connection {
             ServerMessage::TapActivated { .. } => TAP_ACTIVATED_SUBSCRIPTION,
             ServerMessage::MessagePush { .. } => MESSAGE_PUSH_SUBSCRIPTION,
             ServerMessage::ConfigFileReload { .. } => CONFIG_FILE_RELOAD_SUBSCRIPTION,
+            ServerMessage::SeqState { .. } => SEQ_STATE_SUBSCRIPTION,
             _ => return false,
         };
         self.subscriptions & subscription != 0
@@ -427,6 +431,7 @@ impl TcpServer {
                                                     "layer-change".to_string(),
                                                     "hold-activated".to_string(),
                                                     "tap-activated".to_string(),
+                                                    "seq-state".to_string(),
                                                     "current-layer-name".to_string(),
                                                     "current-layer-info".to_string(),
                                                     "fake-key".to_string(),

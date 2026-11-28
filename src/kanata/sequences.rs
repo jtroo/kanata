@@ -1,4 +1,5 @@
 use super::*;
+use kanata_tcp_protocol::SeqPhase;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum SequenceActivity {
@@ -7,6 +8,13 @@ pub enum SequenceActivity {
 }
 
 use SequenceActivity::*;
+
+/// A transition of the sequence state, kept until it is reported to TCP clients.
+pub struct SeqEvent {
+    pub phase: SeqPhase,
+    /// The keys of the sequence at the time of the transition.
+    pub prefix: Vec<u16>,
+}
 
 pub struct SequenceState {
     /// Unmangled sequence of keys pressed for hidden-delay-type.
@@ -30,6 +38,9 @@ pub struct SequenceState {
     pub activity: SequenceActivity,
     /// Counter to reduce number of backspaces typed.
     noerase_count: u16,
+    /// Transitions not yet reported to TCP clients.
+    /// `None` unless keylogging over TCP is enabled; see `set_recording`.
+    pub events: Option<Vec<SeqEvent>>,
 }
 
 impl SequenceState {
@@ -43,6 +54,35 @@ impl SequenceState {
             sequence_timeout: 0,
             activity: Inactive,
             noerase_count: 0,
+            events: None,
+        }
+    }
+
+    pub fn recording(on: bool) -> Self {
+        let mut state = Self::new();
+        state.set_recording(on);
+        state
+    }
+
+    /// Starts or stops recording transitions in `events`.
+    /// Recording is only ever on in builds that can report them.
+    pub fn set_recording(&mut self, on: bool) {
+        self.events = match (on && cfg!(feature = "tcp_server"), self.events.take()) {
+            (true, events) => Some(events.unwrap_or_default()),
+            (false, _) => None,
+        };
+    }
+
+    /// Records that the sequence in `self.sequence` (or `self.overlapped_sequence`) has
+    /// reached `phase`.
+    fn record(&mut self, phase: SeqPhase, overlapped: bool) {
+        if let Some(events) = &mut self.events {
+            let prefix = if overlapped {
+                self.overlapped_sequence.clone()
+            } else {
+                self.sequence.clone()
+            };
+            events.push(SeqEvent { phase, prefix });
         }
     }
 
@@ -56,6 +96,7 @@ impl SequenceState {
         self.overlapped_sequence.clear();
         self.activity = Active;
         self.noerase_count = 0;
+        self.record(SeqPhase::Started, false);
     }
 
     pub fn is_active(&self) -> bool {
@@ -232,7 +273,7 @@ pub(super) fn do_sequence_press_logic(
             }
             if res == NotInTrie || state.sequence.is_empty() {
                 log::debug!("invalid keys for seq");
-                cancel_sequence(state, kbd_out)?;
+                cancel_sequence(state, kbd_out, SeqPhase::Cancelled)?;
             }
         }
     }
@@ -266,6 +307,9 @@ pub(super) fn do_sequence_press_logic(
             )?;
         }
     }
+    if state.is_active() {
+        state.record(SeqPhase::Advanced, false);
+    }
     Ok(())
 }
 
@@ -283,6 +327,10 @@ pub(super) fn do_successful_sequence_termination(
 ) -> Result<(), anyhow::Error> {
     log::debug!("sequence complete; tapping fake key");
     state.activity = Inactive;
+    state.record(
+        SeqPhase::Completed,
+        matches!(seq_type, EndSequenceType::Overlap),
+    );
     let sequence = match seq_type {
         EndSequenceType::Standard => &state.sequence,
         EndSequenceType::Overlap => &state.overlapped_sequence,
@@ -352,8 +400,14 @@ pub(super) fn do_successful_sequence_termination(
     Ok(())
 }
 
-pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -> Result<()> {
+/// Ends sequence mode without a match. `phase` is `Cancelled` or `TimedOut`.
+pub(super) fn cancel_sequence(
+    state: &mut SequenceState,
+    kbd_out: &mut KbdOut,
+    phase: SeqPhase,
+) -> Result<()> {
     state.activity = Inactive;
+    state.record(phase, false);
     log::debug!("sequence cancelled");
     match state.sequence_input_mode {
         SequenceInputMode::HiddenDelayType => {
@@ -370,4 +424,91 @@ pub(super) fn cancel_sequence(state: &mut SequenceState, kbd_out: &mut KbdOut) -
 
 pub(super) fn add_noerase(state: &mut SequenceState, noerase_count: u16) {
     state.noerase_count += noerase_count;
+}
+
+/// Whether `element` is the press of a modifier that starts a chord, e.g. the `lsft` of `S-(a b)`.
+/// The config writes the modifier as a prefix of the keys that follow, so it has no name of its
+/// own in the rendered sequence.
+#[cfg(feature = "tcp_server")]
+fn is_chord_opener(element: u16) -> bool {
+    OsCode::from_u16(element & MASK_KEYCODES).is_some_and(|osc| {
+        let own_mask = mod_mask_for_keycode(KeyCode::from(osc));
+        own_mask != 0 && element & own_mask != 0
+    })
+}
+
+/// Writes sequence keys the way the config does: separated by spaces, with modifiers as
+/// `S-`, `C-`, `A-`, `AG-` and `M-` prefixes. Overlap markers are left out.
+#[cfg(feature = "tcp_server")]
+fn render_sequence(sequence: &[u16]) -> String {
+    const MODS: [(KeyCode, &str); 5] = [
+        (KeyCode::LShift, "S-"),
+        (KeyCode::LCtrl, "C-"),
+        (KeyCode::LAlt, "A-"),
+        (KeyCode::RAlt, "AG-"),
+        (KeyCode::LGui, "M-"),
+    ];
+    let mut rendered = String::new();
+    for &element in sequence {
+        // An element without a key is a bare overlap marker.
+        let Some(osc) = OsCode::from_u16(element & MASK_KEYCODES).filter(|o| u16::from(*o) != 0)
+        else {
+            continue;
+        };
+        if is_chord_opener(element) {
+            continue;
+        }
+        if !rendered.is_empty() {
+            rendered.push(' ');
+        }
+        for (modifier, prefix) in MODS {
+            if element & mod_mask_for_keycode(modifier) != 0 {
+                rendered.push_str(prefix);
+            }
+        }
+        rendered.push_str(&osc.to_string().to_lowercase());
+    }
+    rendered
+}
+
+/// Sends the recorded sequence transitions to `tx` and forgets them.
+#[cfg(feature = "tcp_server")]
+pub(super) fn send_seq_events(
+    state: &mut SequenceState,
+    sequences: &cfg::KeySeqsToFKeys,
+    tx: &Option<Sender<ServerMessage>>,
+) {
+    let Some(events) = state.events.as_mut() else {
+        return;
+    };
+    let Some(tx) = tx else {
+        events.clear();
+        return;
+    };
+    for SeqEvent { phase, prefix } in events.drain(..) {
+        // Pressing the modifier of a chord adds nothing a client could show yet.
+        if phase == SeqPhase::Advanced && prefix.last().is_some_and(|&e| is_chord_opener(e)) {
+            continue;
+        }
+        let candidates = match phase {
+            SeqPhase::Started | SeqPhase::Advanced => {
+                let mut candidates: Vec<_> = sequences
+                    .keys_with_prefix(&prefix)
+                    .map(|sequence| render_sequence(&sequence))
+                    .collect();
+                candidates.sort();
+                candidates.dedup();
+                candidates
+            }
+            SeqPhase::Completed | SeqPhase::Cancelled | SeqPhase::TimedOut => vec![],
+        };
+        let message = ServerMessage::SeqState {
+            prefix: render_sequence(&prefix),
+            candidates,
+            phase,
+        };
+        if let Err(error) = tx.try_send(message) {
+            log::error!("could not send SeqState event: {error}");
+        }
+    }
 }

@@ -82,7 +82,7 @@ use kanata_parser::cfg::list_actions::*;
 use kanata_parser::cfg::*;
 use kanata_parser::custom_action::*;
 pub use kanata_parser::keys::*;
-use kanata_tcp_protocol::ServerMessage;
+use kanata_tcp_protocol::{SeqPhase, ServerMessage};
 
 mod clipboard;
 use clipboard::*;
@@ -520,7 +520,9 @@ impl Kanata {
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
             sequence_timeout: cfg.options.sequence_timeout,
-            sequence_state: SequenceState::new(),
+            sequence_state: SequenceState::recording(
+                cfg.options.tcp_opts.danger_tcp_allow_keylogging,
+            ),
             sequences: cfg.sequences,
             last_tick: web_time::Instant::now(),
             time_remainder: 0,
@@ -691,7 +693,9 @@ impl Kanata {
             sequence_always_on: cfg.options.sequence_always_on,
             sequence_input_mode: cfg.options.sequence_input_mode,
             sequence_timeout: cfg.options.sequence_timeout,
-            sequence_state: SequenceState::new(),
+            sequence_state: SequenceState::recording(
+                cfg.options.tcp_opts.danger_tcp_allow_keylogging,
+            ),
             sequences: cfg.sequences,
             last_tick: web_time::Instant::now(),
             time_remainder: 0,
@@ -849,6 +853,8 @@ impl Kanata {
         #[cfg(feature = "tcp_server")]
         {
             self.danger_tcp_allow_keylogging = cfg.options.tcp_opts.danger_tcp_allow_keylogging;
+            self.sequence_state
+                .set_recording(self.danger_tcp_allow_keylogging);
         }
         self.max_key_timing_check = cfg.max_key_timing_check;
         // Note: input_devices is intentionally not updated on live reload.
@@ -1165,6 +1171,8 @@ impl Kanata {
         self.handle_gamepad_edges()?;
         self.handle_gamepad_motion()?;
         self.tick_sequence_state()?;
+        #[cfg(feature = "tcp_server")]
+        send_seq_events(&mut self.sequence_state, &self.sequences, _tx);
         self.tick_idle_timeout();
         self.tick_physical_idle_timeout();
         self.macro_on_press_cancel_duration = self.macro_on_press_cancel_duration.saturating_sub(1);
@@ -1418,7 +1426,7 @@ impl Kanata {
             state.ticks_until_timeout -= 1;
             if state.ticks_until_timeout == 0 {
                 log::debug!("sequence timeout; exiting sequence state");
-                cancel_sequence(state, &mut self.kbd_out)?;
+                cancel_sequence(state, &mut self.kbd_out, SeqPhase::TimedOut)?;
             }
         }
         Ok(())
@@ -2031,7 +2039,7 @@ impl Kanata {
                     CustomAction::SequenceCancel => {
                         if let Some(state) = self.sequence_state.get_active() {
                             log::debug!("pressed cancel sequence key");
-                            cancel_sequence(state, &mut self.kbd_out)?;
+                            cancel_sequence(state, &mut self.kbd_out, SeqPhase::Cancelled)?;
                         }
                     }
                     CustomAction::SequenceLeader(timeout, input_mode) => {

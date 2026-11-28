@@ -259,3 +259,114 @@ d:KeyS t:10 d:KeyD t:10 u:KeyS t:10 u:KeyD t:10",
     .to_ascii();
     assert_eq!("outU:μ dn:D outU:μ dn:D", result,);
 }
+
+#[cfg(feature = "tcp_server")]
+mod tcp_seq_state {
+    use super::*;
+    use kanata_tcp_protocol::ServerMessage;
+
+    const CFG: &str = "
+        (defcfg danger-tcp-allow-keylogging yes sequence-timeout 100)
+        (defsrc 0 1)
+        (deflayer base sldr scnl)
+        (defvirtualkeys s1 z)
+        (defvirtualkeys s2 y)
+        (defvirtualkeys s3 x)
+        (defvirtualkeys s4 w)
+        (defseq s1 (g r) s2 (g t) s3 (S-(a b)) s4 (c d))
+    ";
+
+    /// The sequence notifications that kanata sends for the simulated input,
+    /// as `Phase [prefix] [candidates]`.
+    fn seq_state_messages(cfg: &str, sim: &str) -> Vec<String> {
+        let (tx, rx) = std::sync::mpsc::sync_channel(100);
+        simulate_notifying(cfg, sim, Default::default(), &Some(tx));
+        rx.try_iter()
+            .map(|message| match message {
+                ServerMessage::SeqState {
+                    prefix,
+                    candidates,
+                    phase,
+                } => format!("{phase:?} [{prefix}] {candidates:?}"),
+                other => panic!("unexpected message: {other:?}"),
+            })
+            .collect()
+    }
+
+    const ALL: &str = r#"["S-a S-b", "c d", "g r", "g t"]"#;
+
+    #[test]
+    fn started_advanced_completed() {
+        assert_eq!(
+            [
+                format!("Started [] {ALL}"),
+                r#"Advanced [g] ["g r", "g t"]"#.to_string(),
+                "Completed [g r] []".to_string(),
+            ],
+            seq_state_messages(CFG, "d:0 u:0 t:10 d:g u:g t:10 d:r u:r t:10").as_slice(),
+        );
+    }
+
+    #[test]
+    fn invalid_key_cancels() {
+        assert_eq!(
+            [format!("Started [] {ALL}"), "Cancelled [] []".to_string()],
+            seq_state_messages(CFG, "d:0 u:0 t:10 d:x u:x t:10").as_slice(),
+        );
+    }
+
+    #[test]
+    fn timeout_keeps_the_typed_prefix() {
+        assert_eq!(
+            [
+                format!("Started [] {ALL}"),
+                r#"Advanced [g] ["g r", "g t"]"#.to_string(),
+                "TimedOut [g] []".to_string(),
+            ],
+            seq_state_messages(CFG, "d:0 u:0 t:10 d:g u:g t:200").as_slice(),
+        );
+    }
+
+    #[test]
+    fn cancel_action_and_rearming() {
+        assert_eq!(
+            [
+                format!("Started [] {ALL}"),
+                r#"Advanced [g] ["g r", "g t"]"#.to_string(),
+                format!("Started [] {ALL}"),
+                "Cancelled [] []".to_string(),
+                format!("Started [] {ALL}"),
+                r#"Advanced [g] ["g r", "g t"]"#.to_string(),
+                "Cancelled [g] []".to_string(),
+            ],
+            seq_state_messages(
+                CFG,
+                "d:0 u:0 t:10 d:g u:g t:10 d:0 u:0 t:10 d:1 u:1 t:10 \
+                 d:0 u:0 t:10 d:g u:g t:10 d:1 u:1 t:10"
+            )
+            .as_slice(),
+        );
+    }
+
+    #[test]
+    fn chorded_keys_are_written_with_modifier_prefixes() {
+        assert_eq!(
+            [
+                format!("Started [] {ALL}"),
+                r#"Advanced [S-a] ["S-a S-b"]"#.to_string(),
+                "Completed [S-a S-b] []".to_string(),
+            ],
+            seq_state_messages(
+                CFG,
+                "d:0 u:0 t:10 d:lsft t:10 d:a t:10 d:b t:10 u:lsft u:a u:b t:10"
+            )
+            .as_slice(),
+        );
+    }
+
+    #[test]
+    fn nothing_is_sent_without_allowing_keylogging() {
+        let cfg = CFG.replace("danger-tcp-allow-keylogging yes", "");
+        assert!(seq_state_messages(&cfg, "d:0 u:0 t:10 d:g u:g t:10 d:r u:r t:10").is_empty());
+    }
+}
