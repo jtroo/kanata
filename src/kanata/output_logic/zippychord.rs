@@ -163,9 +163,6 @@ impl ZchDynamicState {
         log::debug!("zchd reset state");
         self.zchd_soft_reset();
         self.zchd_is_caps_word_active = false;
-        self.zchd_is_lsft_active = false;
-        self.zchd_is_rsft_active = false;
-        self.zchd_is_altgr_active = false;
         self.zchd_last_press = ZchLastPressClassification::IsChord;
         self.zchd_enabled_state = ZchEnabledState::Enabled;
     }
@@ -240,14 +237,14 @@ pub(crate) struct ZchState {
     zchd: ZchDynamicState,
     /// Chords configured by the user. This is fixed at runtime other than live-reloads replacing
     /// the state.
-    zch_chords: ZchPossibleChords,
+    zch_chords: Arc<ZchPossibleChords>,
     /// Options to configure behaviour.
     zch_cfg: ZchConfig,
 }
 
 impl ZchState {
     /// Configure zippychord behaviour.
-    pub(crate) fn zch_configure(&mut self, cfg: (ZchPossibleChords, ZchConfig)) {
+    pub(crate) fn zch_configure(&mut self, cfg: (Arc<ZchPossibleChords>, ZchConfig)) {
         self.zch_chords = cfg.0;
         self.zch_cfg = cfg.1;
         self.zchd.zchd_reset();
@@ -259,26 +256,14 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
-        if self.zch_chords.is_empty() {
-            return kb.press_key(osc);
-        }
         match osc {
-            OsCode::KEY_LEFTSHIFT => {
-                self.zchd.zchd_is_lsft_active = true;
-                return kb.press_key(osc);
-            }
-            OsCode::KEY_RIGHTSHIFT => {
-                self.zchd.zchd_is_rsft_active = true;
-                return kb.press_key(osc);
-            }
-            OsCode::KEY_RIGHTALT => {
-                self.zchd.zchd_is_altgr_active = true;
-                return kb.press_key(osc);
-            }
-            osc if osc.is_zippy_ignored() => {
-                return kb.press_key(osc);
-            }
+            OsCode::KEY_LEFTSHIFT => self.zchd.zchd_is_lsft_active = true,
+            OsCode::KEY_RIGHTSHIFT => self.zchd.zchd_is_rsft_active = true,
+            OsCode::KEY_RIGHTALT => self.zchd.zchd_is_altgr_active = true,
             _ => {}
+        }
+        if self.zch_chords.is_empty() || osc.is_zippy_ignored() {
+            return kb.press_key(osc);
         }
         if self.zchd.zchd_smart_space_state == ZchSmartSpaceState::Sent
             && self
@@ -555,22 +540,13 @@ impl ZchState {
         kb: &mut KbdOut,
         osc: OsCode,
     ) -> Result<(), std::io::Error> {
-        if self.zch_chords.is_empty() {
-            return kb.release_key(osc);
-        }
         match osc {
-            OsCode::KEY_LEFTSHIFT => {
-                self.zchd.zchd_is_lsft_active = false;
-            }
-            OsCode::KEY_RIGHTSHIFT => {
-                self.zchd.zchd_is_rsft_active = false;
-            }
-            OsCode::KEY_RIGHTALT => {
-                self.zchd.zchd_is_altgr_active = false;
-            }
+            OsCode::KEY_LEFTSHIFT => self.zchd.zchd_is_lsft_active = false,
+            OsCode::KEY_RIGHTSHIFT => self.zchd.zchd_is_rsft_active = false,
+            OsCode::KEY_RIGHTALT => self.zchd.zchd_is_altgr_active = false,
             _ => {}
         }
-        if osc.is_zippy_ignored() {
+        if self.zch_chords.is_empty() || osc.is_zippy_ignored() {
             return kb.release_key(osc);
         }
         self.zchd.zchd_state_change(&self.zch_cfg);

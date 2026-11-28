@@ -354,6 +354,8 @@ pub struct Kanata {
     pub macro_on_press_cancel_duration: u32,
     /// Stores user's saved clipboard contents.
     pub saved_clipboard_content: SavedClipboardData,
+    #[cfg(feature = "zippychord")]
+    zippy_configs: Vec<(Arc<ZchPossibleChords>, ZchConfig)>,
     // if set, key taps of this code are sent whenever mouse movement events are passed through
     #[cfg(any(
         all(target_os = "windows", feature = "interception_driver"),
@@ -487,7 +489,8 @@ impl Kanata {
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(feature = "zippychord")]
         {
-            zch().zch_configure(cfg.zippy.unwrap_or_default());
+            *zch() = Default::default();
+            zch().zch_configure(cfg.zippy_configs.first().cloned().unwrap_or_default());
         }
 
         Ok(Self {
@@ -602,6 +605,8 @@ impl Kanata {
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
             macro_on_press_cancel_duration: 0,
             saved_clipboard_content: Default::default(),
+            #[cfg(feature = "zippychord")]
+            zippy_configs: cfg.zippy_configs,
             #[cfg(any(
                 all(target_os = "windows", feature = "interception_driver"),
                 any(target_os = "linux", target_os = "android"),
@@ -655,7 +660,8 @@ impl Kanata {
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
         #[cfg(feature = "zippychord")]
         {
-            zch().zch_configure(cfg.zippy.unwrap_or_default());
+            *zch() = Default::default();
+            zch().zch_configure(cfg.zippy_configs.first().cloned().unwrap_or_default());
         }
 
         Ok(Self {
@@ -770,6 +776,8 @@ impl Kanata {
             allow_hardware_repeat: cfg.options.allow_hardware_repeat,
             macro_on_press_cancel_duration: 0,
             saved_clipboard_content: Default::default(),
+            #[cfg(feature = "zippychord")]
+            zippy_configs: cfg.zippy_configs,
             #[cfg(any(
                 all(target_os = "windows", feature = "interception_driver"),
                 target_os = "linux",
@@ -867,7 +875,8 @@ impl Kanata {
         }
         #[cfg(feature = "zippychord")]
         {
-            zch().zch_configure(cfg.zippy.unwrap_or_default());
+            zch().zch_configure(cfg.zippy_configs.first().cloned().unwrap_or_default());
+            self.zippy_configs = cfg.zippy_configs;
         }
 
         *MAPPED_KEYS.lock() = cfg.mapped_keys;
@@ -2146,6 +2155,10 @@ impl Kanata {
                     }
                     CustomAction::ClipboardSaveCmdSet(id, cmd_params) => {
                         clpb_save_cmd_set(*id, cmd_params, &mut self.saved_clipboard_content);
+                    }
+                    CustomAction::ZippyChangeConfig(_idx) => {
+                        #[cfg(feature = "zippychord")]
+                        zch().zch_configure(self.zippy_configs[usize::from(*_idx)].clone());
                     }
                     CustomAction::ClipboardSaveSwap(id1, id2) => {
                         clpb_save_swap(*id1, *id2, &mut self.saved_clipboard_content);

@@ -31,6 +31,7 @@
 //!   -> output: "Washington"
 //!   -> note: do observe the two spaces between 'w' and 'a'
 use super::*;
+use crate::anyhow_expr;
 use crate::bail_expr;
 
 #[cfg(not(feature = "zippychord"))]
@@ -40,11 +41,15 @@ pub struct ZchPossibleChords();
 #[derive(Debug, Clone, Default)]
 pub struct ZchConfig();
 #[cfg(not(feature = "zippychord"))]
+#[derive(Default)]
+pub(crate) struct ZchDictionaries {}
+#[cfg(not(feature = "zippychord"))]
 fn parse_zippy_inner(
     exprs: &[SExpr],
     _s: &ParserState,
     _f: &mut FileContentProvider,
-) -> Result<(ZchPossibleChords, ZchConfig)> {
+    _dicts: &mut ZchDictionaries,
+) -> Result<(Arc<ZchPossibleChords>, ZchConfig)> {
     bail_expr!(
         &exprs[0],
         "Kanata was not compiled with the \"zippychord\" feature. This configuration is unsupported"
@@ -55,8 +60,90 @@ pub(crate) fn parse_zippy(
     exprs: &[SExpr],
     s: &ParserState,
     f: &mut FileContentProvider,
-) -> Result<(ZchPossibleChords, ZchConfig)> {
-    parse_zippy_inner(exprs, s, f)
+    dicts: &mut ZchDictionaries,
+) -> Result<(Arc<ZchPossibleChords>, ZchConfig)> {
+    parse_zippy_inner(exprs, s, f, dicts)
+}
+
+pub(crate) fn parse_zippy_change_config(
+    ac: &[SExpr],
+    s: &ParserState,
+) -> Result<&'static KanataAction> {
+    let mut configs = s.zippy_change_configs.borrow_mut();
+    let configs = configs
+        .as_mut()
+        .expect("zippy-change-config actions are parsed before defzippy");
+    // Index 0 is `defzippy`.
+    let idx = u16::try_from(configs.len() + 1)
+        .map_err(|_| anyhow_expr!(&ac[0], "Too many {ZIPPY_CHANGE_CONFIG} actions"))?;
+    configs.push(ac.to_vec());
+    custom(CustomAction::ZippyChangeConfig(idx), &s.a)
+}
+
+/// Parses `defzippy` as entry 0, then each recorded `zippy-change-config` action as
+/// `defzippy` with the action's name-value pairs replacing those of `defzippy`.
+/// `dictionary` replaces the file name.
+pub(crate) fn parse_zippy_configs(
+    defzippy: Option<&[SExpr]>,
+    s: &ParserState,
+    f: &mut FileContentProvider,
+    dicts: &mut ZchDictionaries,
+) -> Result<Vec<(Arc<ZchPossibleChords>, ZchConfig)>> {
+    const DICTIONARY: &str = "dictionary";
+    let actions = s
+        .zippy_change_configs
+        .take()
+        .expect("zippy-change-config actions are taken once");
+    let Some(defzippy) = defzippy else {
+        if let Some(ac) = actions.first() {
+            bail_expr!(
+                &ac[0],
+                "{ZIPPY_CHANGE_CONFIG} requires defzippy to be defined"
+            );
+        }
+        return Ok(vec![]);
+    };
+    let mut configs = vec![parse_zippy(defzippy, s, f, dicts)?];
+    for ac in &actions {
+        configs.push({
+            let (pairs, rem) = ac[1..].as_chunks::<2>();
+            if let Some(name) = rem.first() {
+                bail_expr!(name, "zippy config name is missing its value");
+            }
+            let mut dictionary = None;
+            let mut names = vec![];
+            for pair in pairs {
+                let name = pair[0].atom(s.vars()).ok_or_else(|| {
+                    anyhow_expr!(
+                        &pair[0],
+                        "A configuration name must be a string, not a list"
+                    )
+                })?;
+                if name != DICTIONARY {
+                    names.push(name);
+                } else if dictionary.replace(&pair[1]).is_some() {
+                    bail_expr!(
+                        &pair[0],
+                        "This is the 2nd instance; it can only be defined once"
+                    );
+                }
+            }
+            let mut merged = vec![ac[0].clone(), dictionary.unwrap_or(&defzippy[1]).clone()];
+            for pair in defzippy[2..].as_chunks::<2>().0 {
+                let name = pair[0].atom(s.vars()).expect("defzippy is already parsed");
+                if !names.contains(&name) {
+                    merged.extend_from_slice(pair);
+                }
+            }
+            for pair in pairs {
+                if pair[0].atom(s.vars()) != Some(DICTIONARY) {
+                    merged.extend_from_slice(pair);
+                }
+            }
+            parse_zippy(&merged, s, f, dicts)?
+        });
+    }
+    Ok(configs)
 }
 
 #[cfg(feature = "zippychord")]
@@ -69,6 +156,18 @@ mod inner {
     use crate::subset::*;
 
     use parking_lot::Mutex;
+    use std::collections::BTreeMap;
+    use std::path::{Component, PathBuf};
+
+    /// Parsed dictionaries of one config parse, so that each file is read once
+    /// and each distinct dictionary is shared.
+    #[derive(Default)]
+    pub(crate) struct ZchDictionaries {
+        files: HashMap<PathBuf, String>,
+        chords: HashMap<(PathBuf, ZchCharMappings), Arc<ZchPossibleChords>>,
+    }
+
+    type ZchCharMappings = BTreeMap<char, Vec<ZchOutput>>;
 
     /// All possible chords.
     #[derive(Debug, Clone, Default)]
@@ -218,7 +317,7 @@ mod inner {
         Disabled,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, Clone)]
     pub struct ZchConfig {
         /// When, during typing, chord fails to activate, zippychord functionality becomes temporarily
         /// disabled. This is to avoid accidental chord activations when typing normally, as opposed to
@@ -297,7 +396,8 @@ mod inner {
         exprs: &[SExpr],
         s: &ParserState,
         f: &mut FileContentProvider,
-    ) -> Result<(ZchPossibleChords, ZchConfig)> {
+        dicts: &mut ZchDictionaries,
+    ) -> Result<(Arc<ZchPossibleChords>, ZchConfig)> {
         use crate::subset::GetOrIsSubsetOfKnownKey::*;
 
         if exprs[0].atom(None).expect("should be atom") == "defzippy-experimental" {
@@ -334,7 +434,7 @@ mod inner {
         let mut smart_space_punctuation_seen = false;
         let mut smart_space_punctuation_val_expr = None;
 
-        let mut user_cfg_char_to_output: HashMap<char, Vec<ZchOutput>> = HashMap::default();
+        let mut user_cfg_char_to_output = ZchCharMappings::new();
         let pairs = exprs[2..].as_chunks::<2>();
         for pair in pairs.0.iter() {
             let config_name = &pair[0];
@@ -564,10 +664,25 @@ mod inner {
             config.zch_cfg_smart_space_punctuation.shrink_to_fit();
         }
 
-        // process zippy file
-        let input_data = f
-            .get_file_content(file_name.as_ref())
-            .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
+        // The file reader refuses a second read of one file, so `x` and `./x` must share a key.
+        // shortcut: only `.` components are removed, so `../dir/x`, absolute paths and symlinks
+        // still fail at load; resolve the path like the file reader if users hit that.
+        let file_path: PathBuf = Path::new(file_name)
+            .components()
+            .filter(|c| *c != Component::CurDir)
+            .collect();
+        let key = (file_path, user_cfg_char_to_output);
+        if let Some(chords) = dicts.chords.get(&key) {
+            return Ok((chords.clone(), config));
+        }
+        let (file_path, user_cfg_char_to_output) = &key;
+        if !dicts.files.contains_key(file_path) {
+            let content = f
+                .get_file_content(file_name.as_ref())
+                .map_err(|e| anyhow_expr!(&exprs[1], "Failed to read file:\n{e}"))?;
+            dicts.files.insert(file_path.clone(), content);
+        }
+        let input_data = &dicts.files[file_path];
         let res = input_data
             .lines()
             .enumerate()
@@ -727,10 +842,9 @@ mod inner {
                     Ok(zch)
                 },
             )?;
-        Ok((
-            Arc::into_inner(res).expect("no other refs").into_inner(),
-            config,
-        ))
+        let chords = Arc::new(Arc::into_inner(res).expect("no other refs").into_inner());
+        dicts.chords.insert(key, chords.clone());
+        Ok((chords, config))
     }
 
     fn parse_single_zippy_output_mapping(

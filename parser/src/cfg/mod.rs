@@ -316,8 +316,9 @@ pub struct Cfg {
     pub fake_keys: HashMap<String, usize>,
     /// The maximum value of switch's key-timing item in the configuration.
     pub max_key_timing_check: u16,
-    /// Zipchord-like configuration.
-    pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
+    /// Zipchord-like configurations: `defzippy` at index 0, then one per
+    /// `zippy-change-config` action, which stores its index. Empty without `defzippy`.
+    pub zippy_configs: Vec<(Arc<ZchPossibleChords>, ZchConfig)>,
     /// Input device ID mappings from `definputdevices`.
     pub input_devices: Option<Vec<(std::num::NonZeroU8, InputDeviceMatcher)>>,
     /// Gamepad config declared by `defgamepad`. `None` without one; mapped
@@ -415,7 +416,7 @@ fn populate_cfg_with_icfg(icfg: IntermediateCfg, s: ParserState) -> Cfg {
         overrides: icfg.overrides,
         fake_keys,
         max_key_timing_check,
-        zippy: icfg.zippy,
+        zippy_configs: icfg.zippy_configs,
         input_devices: s.input_devices,
         gamepad: s.gamepad,
     }
@@ -431,7 +432,7 @@ pub struct IntermediateCfg {
     pub overrides: Overrides,
     pub chords_v2: Option<ChordsV2<'static, KanataCustom>>,
     pub start_action: Option<&'static KanataAction>,
-    pub zippy: Option<(ZchPossibleChords, ZchConfig)>,
+    pub zippy_configs: Vec<(Arc<ZchPossibleChords>, ZchConfig)>,
 }
 
 // A snapshot of enviroment variables, or an error message with an explanation
@@ -1030,24 +1031,24 @@ pub fn parse_cfg_raw_string(
         .iter()
         .filter(defzippy_filter)
         .collect::<Vec<_>>();
-    let zippy = match zippy_exprs.len() {
-        0 => None,
-        1 => {
-            let zippy = parse_zippy(zippy_exprs[0], s, file_content_provider)?;
-            Some(zippy)
-        }
-        _ => {
-            let spanned = spanned_root_exprs
-                .iter()
-                .filter(defzippy_spanned_filter)
-                .nth(1)
-                .expect("> 2 overrides");
-            bail_span!(
-                spanned,
-                "Only one defzippy allowed, found more.\nDelete the extras."
-            )
-        }
-    };
+    let mut zippy_dicts = ZchDictionaries::default();
+    if zippy_exprs.len() > 1 {
+        let spanned = spanned_root_exprs
+            .iter()
+            .filter(defzippy_spanned_filter)
+            .nth(1)
+            .expect("> 2 overrides");
+        bail_span!(
+            spanned,
+            "Only one defzippy allowed, found more.\nDelete the extras."
+        )
+    }
+    let zippy_configs = parse_zippy_configs(
+        zippy_exprs.first().map(|exprs| &exprs[..]),
+        s,
+        file_content_provider,
+        &mut zippy_dicts,
+    )?;
 
     #[cfg(feature = "lsp")]
     LSP_VARIABLE_REFERENCES.with_borrow_mut(|refs| {
@@ -1069,7 +1070,7 @@ pub fn parse_cfg_raw_string(
         overrides,
         chords_v2,
         start_action,
-        zippy,
+        zippy_configs,
     })
 }
 
@@ -1238,6 +1239,8 @@ pub struct ParserState {
     gamepad: Option<crate::gamepad::GamepadConfig>,
     pctx: ParserContext,
     pub lsp_hints: RefCell<LspHints>,
+    /// Exprs of each `zippy-change-config` action; parsed once `defzippy` is known.
+    zippy_change_configs: RefCell<Option<Vec<Vec<SExpr>>>>,
     hand_map: Option<&'static custom_tap_hold::HandMap>,
     a: Arc<Allocations>,
 }
@@ -1272,6 +1275,7 @@ impl Default for ParserState {
             input_devices: None,
             gamepad: None,
             lsp_hints: Default::default(),
+            zippy_change_configs: RefCell::new(Some(vec![])),
             hand_map: None,
             a: unsafe { Allocations::new() },
             pctx: ParserContext::default(),
@@ -1779,6 +1783,7 @@ fn parse_action_list(ac: &[SExpr], s: &ParserState) -> Result<&'static KanataAct
         CLIPBOARD_SAVE_SET => parse_clipboard_save_set(&ac[1..], s),
         CLIPBOARD_SAVE_CMD_SET => parse_cmd(&ac[1..], s, CmdType::ClipboardSaveSet),
         CLIPBOARD_SAVE_SWAP => parse_clipboard_save_swap(&ac[1..], s),
+        ZIPPY_CHANGE_CONFIG => parse_zippy_change_config(ac, s),
         _ => unreachable!(),
     }
 }
